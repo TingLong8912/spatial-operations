@@ -385,18 +385,17 @@ const getCountyBoundary = (inputPt, countyFeatureCollection, threshold, countyNa
     }
 };
 
-const readData = async function (file_path) => {
+const readData = async (file_path) => {
     try {
         const data = await readFile(file_path, 'utf8');
-        return data
+        return data;
     } catch (err) {
         console.error('Error reading the file:', err);
     }
-  }
+};
   
 
 router.get("/", (_, res) => {
-    console.log("get");
     res.status(200).json({ 
         message: "Hello, world." 
     });
