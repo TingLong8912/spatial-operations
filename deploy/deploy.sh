@@ -3,7 +3,7 @@ NAMESPACE=tw-sgis
 APP=tw-sgis-getroadmile
 URL=getroadmile.sgis.tw
 IMG=dkr.tw/sgis/getroadmile:api
-IMGPORT=80
+IMGPORT=4000
 
 
 cat << EOF | kubectl apply -n ${NAMESPACE} -f - || echo 1
