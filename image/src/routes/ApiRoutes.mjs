@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import * as turf from '@turf/turf';
 import { features } from 'process';
-import { readFile } from 'fs/promises';
+import { promises as fs } from 'fs';
 
 const router = Router();
 
@@ -387,14 +387,13 @@ const getCountyBoundary = (inputPt, countyFeatureCollection, threshold, countyNa
 
 const readData = async (file_path) => {
     try {
-        const data = await readFile(file_path, 'utf8');
+        const data = await fs.readFile(file_path, 'utf8');
         return data;
     } catch (err) {
         console.error('Error reading the file:', err);
     }
 };
   
-
 router.get("/", (_, res) => {
     res.status(200).json({ 
         message: "Hello, world." 
