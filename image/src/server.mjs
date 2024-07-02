@@ -5,6 +5,7 @@ import cors from 'cors';
 import dotenv from 'dotenv-defaults';
 import path from 'path';
 import { router } from './routes/index.mjs';
+import { Client } from 'pg';
 
 /* CONFIGURATIONS */
 dotenv.config();

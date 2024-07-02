@@ -397,8 +397,34 @@ const readData = async (file_path) => {
 };
   
 router.get("/", (_, res) => {
+    // DB Connection
+    const client = new Client({
+        user: "TingLong",
+        host: "pdb.sgis.tw",
+        database: "gistl",
+        password: "Acfg27354195",
+        port: "5432",
+    });
+    
+    const connectAndQuery = async () => {
+        try {
+            await client.connect();
+            console.log('Connected to PostgreSQL database');
+        
+            const query = 'SELECT * FROM geospatial_description.County';
+            const res = await client.query(query);
+            return res
+        } catch (err) {
+            console.error('Connection error', err.stack);
+        } finally {
+            await client.end();
+        }
+    };
+    const dbData = connectAndQuery();
+
     res.status(200).json({ 
-        message: "Hello, world." 
+        message: "Hello, world.",
+        data: dbData 
     });
 });
 
@@ -415,6 +441,31 @@ router.get('/getMile', (req, res) => {
     const inputPt = turf.point(floatInputPtArray);
 
     // Read Data
+    // DB Connection
+    const client = new Client({
+        user: "TingLong",
+        host: "pdb.sgis.tw",
+        database: "gistl",
+        password: "Acfg27354195",
+        port: "5432",
+    });
+    
+    const connectAndQuery = async () => {
+        try {
+            await client.connect();
+            console.log('Connected to PostgreSQL database');
+        
+            const query = 'SELECT * FROM geospatial_description.County';
+            const res = await client.query(query);
+            return res
+        } catch (err) {
+            console.error('Connection error', err.stack);
+        } finally {
+            await client.end();
+        }
+    };
+    const dbData = connectAndQuery();
+
     // Read Road GeoJSON
     var geojsonPath = './src/assets/ROAD_HW1.geojson';
     const roadStrings = readData(geojsonPath, 'utf8');
