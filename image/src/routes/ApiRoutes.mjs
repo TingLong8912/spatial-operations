@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as turf from '@turf/turf';
 import { features } from 'process';
+import { readFile } from 'fs/promises';
 
 const router = Router();
 
@@ -384,6 +385,16 @@ const getCountyBoundary = (inputPt, countyFeatureCollection, threshold, countyNa
     }
 };
 
+const readData = async function (file_path) => {
+    try {
+        const data = await readFile(file_path, 'utf8');
+        return data
+    } catch (err) {
+        console.error('Error reading the file:', err);
+    }
+  }
+  
+
 router.get("/", (_, res) => {
     console.log("get");
     res.status(200).json({ 
@@ -404,16 +415,14 @@ router.get('/getMile', (req, res) => {
     const inputPt = turf.point(floatInputPtArray);
 
     // Read Data
-    const fs = require('fs');
-
     // Read Road GeoJSON
     var geojsonPath = './src/assets/ROAD_HW1.geojson';
-    var geojsonData = fs.readFileSync(geojsonPath, 'utf8');
+    var geojsonData = readData(geojsonPath, 'utf8');
     const roadStrings = JSON.parse(geojsonData);
 
     // Read Station GeoJSON
     var geojsonPath = './src/assets/Stations_HW1.geojson';
-    var geojsonData = fs.readFileSync(geojsonPath, 'utf8');
+    var geojsonData = readData(geojsonPath, 'utf8');
     const stationsPts = JSON.parse(geojsonData);
     const stationsNearProbabiltiy = getNearObjectProbability(inputPt, stationsPts, "Name");
     console.log(stationsNearProbabiltiy);
@@ -425,13 +434,13 @@ router.get('/getMile', (req, res) => {
     if (initialDataJson.status === "success") {
         // Read Road Facilities GeoJSON
         var geojsonPath = './src/assets/HUofHW1.geojson';
-        var geojsonData = fs.readFileSync(geojsonPath, 'utf8');
+        var geojsonData = readData(geojsonPath, 'utf8');
         const roadAncillaryFacilitiesStrings = JSON.parse(geojsonData);
         const roadAncillaryFacilitiesNearProbabiltiy = getNearObjectProbability(inputPt, roadAncillaryFacilitiesStrings, "ROADNAME");
 
         // Read County GeoJSON
         var geojsonPath = './src/assets/county.geojson';
-        var geojsonData = fs.readFileSync(geojsonPath, 'utf8');
+        var geojsonData = readData(geojsonPath, 'utf8');
         const thresholdBoundary = 1; // units: km
         const countyPolygon = JSON.parse(geojsonData);
         const boundedCounty = getCountyBoundary(inputPt, countyPolygon, thresholdBoundary);
