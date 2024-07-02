@@ -388,7 +388,9 @@ const getCountyBoundary = (inputPt, countyFeatureCollection, threshold, countyNa
 const readData = async (file_path) => {
     try {
         const data = await fs.readFile(file_path, 'utf8');
-        return data;
+        const jsonData = JSON.parse(data);
+        console.log("jsonData: ", jsonData);
+        return jsonData;
     } catch (err) {
         console.error('Error reading the file:', err);
     }
@@ -415,13 +417,11 @@ router.get('/getMile', (req, res) => {
     // Read Data
     // Read Road GeoJSON
     var geojsonPath = './src/assets/ROAD_HW1.geojson';
-    var geojsonData = readData(geojsonPath, 'utf8');
-    const roadStrings = JSON.parse(geojsonData);
+    const roadStrings = readData(geojsonPath, 'utf8');
 
     // Read Station GeoJSON
     var geojsonPath = './src/assets/Stations_HW1.geojson';
-    var geojsonData = readData(geojsonPath, 'utf8');
-    const stationsPts = JSON.parse(geojsonData);
+    const stationsPts = readData(geojsonPath, 'utf8');
     const stationsNearProbabiltiy = getNearObjectProbability(inputPt, stationsPts, "Name");
     console.log(stationsNearProbabiltiy);
 
@@ -432,15 +432,13 @@ router.get('/getMile', (req, res) => {
     if (initialDataJson.status === "success") {
         // Read Road Facilities GeoJSON
         var geojsonPath = './src/assets/HUofHW1.geojson';
-        var geojsonData = readData(geojsonPath, 'utf8');
-        const roadAncillaryFacilitiesStrings = JSON.parse(geojsonData);
+        const roadAncillaryFacilitiesStrings = readData(geojsonPath, 'utf8');
         const roadAncillaryFacilitiesNearProbabiltiy = getNearObjectProbability(inputPt, roadAncillaryFacilitiesStrings, "ROADNAME");
 
         // Read County GeoJSON
         var geojsonPath = './src/assets/county.geojson';
-        var geojsonData = readData(geojsonPath, 'utf8');
+        const countyPolygon = readData(geojsonPath, 'utf8');
         const thresholdBoundary = 1; // units: km
-        const countyPolygon = JSON.parse(geojsonData);
         const boundedCounty = getCountyBoundary(inputPt, countyPolygon, thresholdBoundary);
         console.log("boundedCounty result: ", boundedCounty);
         // 
