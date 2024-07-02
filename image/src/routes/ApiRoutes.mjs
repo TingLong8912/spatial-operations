@@ -410,12 +410,14 @@ router.get("/", (_, res) => {
     const connectAndQuery = async () => {
         try {
             await client.connect();
-            console.log('Connected to PostgreSQL database');
+            return "connected"
+            // console.log('Connected to PostgreSQL database');
         
-            const query = 'SELECT * FROM geospatial_description.County';
-            const res = await client.query(query);
-            return res
+            // const query = 'SELECT * FROM geospatial_description.County';
+            // const res = await client.query(query);
+            // return res
         } catch (err) {
+            return 'error';
             console.error('Connection error', err.stack);
         } finally {
             await client.end();
