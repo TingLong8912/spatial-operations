@@ -1,0 +1,20 @@
+stages:
+  - build
+  - deploy
+
+build:
+  stage: build
+  script: 
+    - docker pull node:latest
+    - docker build -t dkr.tw/sgis/getroadmile:api image
+    - docker push dkr.tw/sgis/getroadmile:api
+    - docker rmi $(docker images | grep none | awk '{print $3}') || echo 1
+  tags:
+    - sgis-zone101
+
+deploy:
+  stage: deploy
+  script:
+    - bash deploy/deploy.sh
+  tags:
+    - sgis-zone101
