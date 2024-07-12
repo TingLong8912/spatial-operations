@@ -2,11 +2,12 @@ import { Router } from 'express';
 import * as turf from '@turf/turf';
 import { features } from 'process';
 import { promises as fs } from 'fs';
-import { Client } from 'pg';
+import pg from 'pg';
 
 const router = Router();
 
 const findTop2NearestRoad = (inputPt, roadStrings) => {
+    console.log("running findTop2NearestRoad...")
     let nearestPoints = [];
     roadStrings.features.forEach(line => {
         const nearestPoint = turf.nearestPointOnLine(line, inputPt, { units: "kilometers" });
@@ -17,7 +18,8 @@ const findTop2NearestRoad = (inputPt, roadStrings) => {
     });
 
     nearestPoints.sort((a, b) => a.distance - b.distance);
-        
+    
+    console.log("findTop2NearestRoad end")
     return { 
         "top2NearestRoad": nearestPoints.slice(0, 2).map(item => item.line), 
         "top2NearestPoint": nearestPoints.slice(0, 2).map(item => item.nearestPoint)
@@ -47,6 +49,7 @@ const initialData = (inputPt, roadStrings, stationsPts, threshold=0.2) => {
     const bufferThreshold = 4;
 
     if (inputPtToPathDistance < threshold) {
+        console.log("inputPtToPathDistance < threshold")
         // Preprocessing
         const bufferedRoadStrings = getIntersectedObject(inputPt, roadStrings, bufferThreshold);
         const bufferedStationsPts = getIntersectedObject(inputPt, stationsPts, bufferThreshold);
@@ -149,7 +152,8 @@ const initialData = (inputPt, roadStrings, stationsPts, threshold=0.2) => {
         const nearestPointB = convertStringToFloat(turf.nearestPoint(referLineCoordsB, stationsPts).properties.Name);
 
         const projectedInputPt = top2NearestPoint[0];
- 
+        
+        console.log("initialData successed"); 
         return {
             "status": "success",
             "data": {
@@ -162,6 +166,7 @@ const initialData = (inputPt, roadStrings, stationsPts, threshold=0.2) => {
             }
         }
     } else {
+        console.log("initialData failed"); 
         return {
             "status": "error",
             "message": "The input point is too far from the road."
@@ -385,49 +390,41 @@ const getCountyBoundary = (inputPt, countyFeatureCollection, threshold, countyNa
         return 0;
     }
 };
-
-const readData = async (file_path) => {
-    try {
-        const data = await fs.readFile(file_path, 'utf8');
-        const jsonData = JSON.parse(data);
-        console.log("jsonData: ", jsonData);
-        return jsonData;
-    } catch (err) {
-        console.error('Error reading the file:', err);
-    }
-};
   
 router.get("/", (_, res) => {
     // DB Connection
-    // const client = new Client({
-    //     user: "TingLong",
-    //     host: "pdb.sgis.tw",
-    //     database: "gistl",
-    //     password: "Acfg27354195",
-    //     port: "5432",
-    // });
-    
-    // const connectAndQuery = async () => {
-    //     try {
-    //         await client.connect();
-    //         return "connected"
-    //         // console.log('Connected to PostgreSQL database');
-        
-    //         // const query = 'SELECT * FROM geospatial_description.County';
-    //         // const res = await client.query(query);
-    //         // return res
-    //     } catch (err) {
-    //         return 'error';
-    //         console.error('Connection error', err.stack);
-    //     } finally {
-    //         await client.end();
-    //     }
-    // };
-    // const dbData = connectAndQuery();
+    const client = new pg.Client({
+        user: "TingLong",
+        host: "pdb.sgis.tw",
+        database: "gistl",
+        password: "Acfg27354195",
+        port: "5432",
+    });
 
-    res.status(200).json({ 
-        message: "Hello, world.",
-        // data: dbData 
+    const connectAndQuery = async () => {
+        try {
+            await client.connect();
+            console.log('Connected to PostgreSQL database');
+        
+            const query = 'SELECT id, countyname, ST_AsGeoJSON(geom) as geom FROM geospatial_description.county';
+            const res = await client.query(query);
+            return res.rows;  
+        } catch (err) {
+            console.error('Connection error', err.stack);
+        } finally {
+            await client.end();
+        }
+    };
+    connectAndQuery().then(dbData => {
+        res.status(200).json({ 
+            message: "Hello, world.",
+            data: dbData 
+        });
+    }).catch(err => {
+        res.status(200).json({ 
+            message: "Hello, world.",
+            data: "error" 
+        });
     });
 });
 
@@ -445,7 +442,7 @@ router.get('/getMile', (req, res) => {
 
     // Read Data
     // DB Connection
-    const client = new Client({
+    const client = new pg.Client({
         user: "TingLong",
         host: "pdb.sgis.tw",
         database: "gistl",
@@ -458,87 +455,137 @@ router.get('/getMile', (req, res) => {
             await client.connect();
             console.log('Connected to PostgreSQL database');
         
-            const query = 'SELECT * FROM geospatial_description.County';
-            const res = await client.query(query);
-            return res
+            const query_county = 'SELECT id, countyname, ST_AsGeoJSON(geom) as geom FROM geospatial_description.county';
+            const res_county = await client.query(query_county);
+            
+            const query_MileStations = 'SELECT id, name, ST_AsGeoJSON(geom) as geom FROM geospatial_description.MileStations';
+            const res_MileStations = await client.query(query_MileStations);
+
+            const query_Route = 'SELECT id, roadnum, ST_AsGeoJSON(geom) as geom FROM geospatial_description.Route';
+            const res_Route = await client.query(query_Route);
+
+            const query_RouteAncillaryFacilities = 'SELECT id, roadnum, ST_AsGeoJSON(geom) as geom FROM geospatial_description.RouteAncillaryFacilities';
+            const res_RouteAncillaryFacilities = await client.query(query_RouteAncillaryFacilities);
+
+            const convertToGeoJSON = (rows, idField, additionalFields) => {
+                return rows.map(row => {
+                    const geom = JSON.parse(row.geom);
+                    const properties = { [idField]: row[idField] };
+                        additionalFields.forEach(field => {
+                        properties[field] = row[field];
+                    });
+                    return {
+                        type: 'Feature',
+                        geometry: geom,
+                        properties: properties
+                    };
+                });
+            };
+          
+            const countyFeatures = convertToGeoJSON(res_county.rows, 'id', ['countyname']);
+            const mileStationsFeatures = convertToGeoJSON(res_MileStations.rows, 'id', ['name']);
+            const routeFeatures = convertToGeoJSON(res_Route.rows, 'id', ['roadnum']);
+            const routeAncillaryFacilitiesFeatures = convertToGeoJSON(res_RouteAncillaryFacilities.rows, 'id', ['roadnum']);
+        
+            const countyGeoJSON = {
+                type: 'FeatureCollection',
+                features: countyFeatures
+            };
+        
+            const mileStationsGeoJSON = {
+                type: 'FeatureCollection',
+                features: mileStationsFeatures
+            };
+        
+            const routeGeoJSON = {
+                type: 'FeatureCollection',
+                features: routeFeatures
+            };
+        
+            const routeAncillaryFacilitiesGeoJSON = {
+                type: 'FeatureCollection',
+                features: routeAncillaryFacilitiesFeatures
+            };
+        
+            return {
+                county: countyGeoJSON,
+                MileStations: mileStationsGeoJSON,
+                Route: routeGeoJSON,
+                RouteAncillaryFacilities: routeAncillaryFacilitiesGeoJSON
+            };
         } catch (err) {
             console.error('Connection error', err.stack);
         } finally {
             await client.end();
         }
     };
-    const dbData = connectAndQuery();
+    
+    connectAndQuery().then(dbData => {
+        const roadStrings = dbData.Route;
+        const stationsPts = dbData.MileStations;
 
-    // Read Road GeoJSON
-    var geojsonPath = './src/assets/ROAD_HW1.geojson';
-    const roadStrings = readData(geojsonPath, 'utf8');
-
-    // Read Station GeoJSON
-    var geojsonPath = './src/assets/Stations_HW1.geojson';
-    const stationsPts = readData(geojsonPath, 'utf8');
-    const stationsNearProbabiltiy = getNearObjectProbability(inputPt, stationsPts, "Name");
-    console.log(stationsNearProbabiltiy);
-
-    const initialDataJson = initialData(inputPt, roadStrings, stationsPts);
-
-    console.log(initialDataJson.status);
-    // Find The Top2 Nearest Stations
-    if (initialDataJson.status === "success") {
-        // Read Road Facilities GeoJSON
-        var geojsonPath = './src/assets/HUofHW1.geojson';
-        const roadAncillaryFacilitiesStrings = readData(geojsonPath, 'utf8');
-        const roadAncillaryFacilitiesNearProbabiltiy = getNearObjectProbability(inputPt, roadAncillaryFacilitiesStrings, "ROADNAME");
-
-        // Read County GeoJSON
-        var geojsonPath = './src/assets/county.geojson';
-        const countyPolygon = readData(geojsonPath, 'utf8');
-        const thresholdBoundary = 1; // units: km
-        const boundedCounty = getCountyBoundary(inputPt, countyPolygon, thresholdBoundary);
-        console.log("boundedCounty result: ", boundedCounty);
-        // 
-        const { projectedInputPt, splitLineStringsGeoJSON, targetLine, referLine, nearestPointA, nearestPointB } = initialDataJson.data;
-        if (!targetLine) res.status(204).json(initialDataJson);
-        // Calculate The Distance Along Path
-        const startPt = targetLine.properties.startPt;
-        const startPtMile = targetLine.properties.startPt.properties.Mile;
-        const endPt = targetLine.properties.endPt;
-        const endPtMile = targetLine.properties.endPt.properties.Mile;
-        const split = turf.lineSlice(startPt, projectedInputPt, targetLine);
-        const splitLength = turf.length(split, { units: "kilometers" });
-        // Get The Mile of Input Point
-        const inputPtMile = parseFloat((startPtMile + splitLength).toFixed(3));
+        console.log("\n roadStrings: ", roadStrings);
+        console.log("\n stationPts: ", stationsPts);
+        const initialDataJson = initialData(inputPt, roadStrings, stationsPts);
         
-        // Get Direction
-        const direction = getDirection(targetLine, referLine, nearestPointA, nearestPointB);
-        console.log("direction result: ", direction);
+        // Find The Top2 Nearest Stations
+        if (initialDataJson.status === "success") {
+            const roadAncillaryFacilitiesStrings = dbData.RouteAncillaryFacilities;
+            const roadAncillaryFacilitiesNearProbabiltiy = getNearObjectProbability(inputPt, roadAncillaryFacilitiesStrings, "ROADNAME");
 
-        inputPt.properties = {"Name": "Input_Point", "Mile": inputPtMile, "Direction": direction};
+            const countyPolygon = dbData.county;
+            const thresholdBoundary = 1; // units: km
+            const boundedCounty = getCountyBoundary(inputPt, countyPolygon, thresholdBoundary);
 
-        const pathGeom = targetLine
-        pathGeom.properties = {"Name": "Path_Name", "Direction": direction};
-        
-        targetLine.properties = {"Name": "Target_Road"}
-        referLine.properties = {"Name": "Refer_Road"}
-        
-        // Api Result
-        const apiResult = {
-            "status": "success",
-            "data": {
-                "text": {
-                    "inputPtMile": inputPtMile,
-                    "direction": direction,
-                    "pathName": pathGeom.properties.Name
-                },
-                "geometry": {
-                    "totalFeatureCollection": turf.featureCollection([ inputPt, startPt, endPt, pathGeom, targetLine, referLine])
+            const { projectedInputPt, splitLineStringsGeoJSON, targetLine, referLine, nearestPointA, nearestPointB } = initialDataJson.data;
+            if (!targetLine) res.status(204).json(initialDataJson);
+            // Calculate The Distance Along Path
+            const startPt = targetLine.properties.startPt;
+            const startPtMile = targetLine.properties.startPt.properties.Mile;
+            const endPt = targetLine.properties.endPt;
+            const endPtMile = targetLine.properties.endPt.properties.Mile;
+            const split = turf.lineSlice(startPt, projectedInputPt, targetLine);
+            const splitLength = turf.length(split, { units: "kilometers" });
+            // Get The Mile of Input Point
+            const inputPtMile = parseFloat((startPtMile + splitLength).toFixed(3));
+            
+            // Get Direction
+            const direction = getDirection(targetLine, referLine, nearestPointA, nearestPointB);
+            console.log("direction result: ", direction);
+
+            inputPt.properties = {"Name": "Input_Point", "Mile": inputPtMile, "Direction": direction};
+
+            const pathGeom = targetLine
+            pathGeom.properties = {"Name": "Path_Name", "Direction": direction};
+            
+            targetLine.properties = {"Name": "Target_Road"}
+            referLine.properties = {"Name": "Refer_Road"}
+            
+            // Api Result
+            const apiResult = {
+                "status": "success",
+                "data": {
+                    "text": {
+                        "inputPtMile": inputPtMile,
+                        "direction": direction,
+                        "pathName": pathGeom.properties.Name
+                    },
+                    "geometry": {
+                        "totalFeatureCollection": turf.featureCollection([ inputPt, startPt, endPt, pathGeom, targetLine, referLine])
+                    }
                 }
-            }
-        };
+            };
 
-        res.status(200).json(apiResult);
-    } else {
-        res.status(200).json(initialDataJson);
-    }
+            res.status(200).json(apiResult);
+        } else {
+            res.status(200).json(initialDataJson);
+        }
+    }).catch(err => {
+        res.status(200).json({ 
+            message: "Hello, world.",
+            data: "error" 
+        });
+    });
 });
 
 export default router;

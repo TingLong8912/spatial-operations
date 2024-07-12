@@ -6,6 +6,7 @@ build:
   stage: build
   script: 
     - docker pull node:latest
+    - docker pull postgres:latest
     - docker build -t dkr.tw/sgis/getroadmile:api image
     - docker push dkr.tw/sgis/getroadmile:api
     - docker rmi $(docker images | grep none | awk '{print $3}') || echo 1
