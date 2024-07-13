@@ -459,7 +459,7 @@ const getDirection = (targetLine, referLine, nearestPointA, nearestPointB) => {
         direction = undefined;
     }
 
-    return { "Route": direction };
+    return { "Route": [ direction ] };
 };
 
 // 2.10 BinaryDistance(DistanceNear/DistanceMiddle)
