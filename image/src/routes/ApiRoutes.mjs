@@ -442,21 +442,24 @@ const getDirection = (targetLine, referLine, nearestPointA, nearestPointB) => {
 
     console.log("degreeToNorth: ", degreeToNorth, "\ntargetDirection: ", targetDirection);
 
+    let direction;
     if (degreeToNorth === 0) {
         if (targetDirection === 90) {
-            return ["N"];
+            direction = "N";
         } else {
-            return ["S"];
+            direction = "S";
         }
     } else if (degreeToNorth > 0) {
         if (targetDirection - degreeToNorth > 0) {
-            return ["N"];
+            direction = "N";
         } else {
-            return ["S"];
+            direction = "S";
         }
     } else {
-        return [undefined];
+        direction = undefined;
     }
+
+    return { "Route": direction };
 };
 
 // 2.10 BinaryDistance(DistanceNear/DistanceMiddle)
