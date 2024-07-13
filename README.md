@@ -38,13 +38,13 @@ In the dictionary recorded under `SpatialOperation` the first level records spat
 Here is an example of one of the spatial relationships:
 
 ```javascript
-    "Intersect": {
-        "Route": [],
-        "RouteAncillaryFacilities": [],
-        "County": [
-            "臺北市"
-        ]
-    }
+"Intersect": {
+    "Route": [],
+    "RouteAncillaryFacilities": [],
+    "County": [
+        "臺北市"
+    ]
+}
 ```
 
 Under the `Geometry` field, the first level records `totalFeatureCollection`, the second level records five spatial objects are recorded, including the input point, the road the input point maps to, another road the input point maps to, and the mileage marker points before and after the input point.
