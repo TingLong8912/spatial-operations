@@ -6,6 +6,8 @@ import pg from 'pg';
 
 const router = Router();
 
+// 1 Basic Operation
+// 1.1 Find the nearest road of inputPt
 const findTop2NearestRoad = (inputPt, roadStrings) => {
     console.log("running findTop2NearestRoad...")
     let nearestPoints = [];
@@ -26,21 +28,20 @@ const findTop2NearestRoad = (inputPt, roadStrings) => {
     };
 }
 
-const getIntersectedObject = (point, multiObject, bufferRadius) => {
-    const bufferedPoint = turf.buffer(point, bufferRadius, { units: 'kilometers' });
+const getLimitObject = (inputPt, referObject, bufferThreshold) => {
+    const bufferedPoint = turf.buffer(inputPt, bufferThreshold, { units: 'kilometers' });
+    var intersectingFeatures = [];
 
-    const intersectingMultiObjectStrings = [];
-    multiObject.features.forEach(feature => {
+    referObject.features.forEach(feature => {
         if (turf.booleanIntersects(feature, bufferedPoint)) {
-            intersectingMultiObjectStrings.push(feature);
+            intersectingFeatures.push(feature);
         }
     });
 
-    const intersectingFeaturesGeoJSON = turf.featureCollection(intersectingMultiObjectStrings);
-
-    return intersectingFeaturesGeoJSON;
+    return turf.featureCollection(intersectingFeatures);
 };
 
+// 1.2 Project inputPt and split the roadStrings
 const initialData = (inputPt, roadStrings, stationsPts, threshold=0.2) => {
     console.log("running initialData...");
     var { top2NearestRoad, top2NearestPoint } = findTop2NearestRoad(inputPt, roadStrings);
@@ -51,8 +52,8 @@ const initialData = (inputPt, roadStrings, stationsPts, threshold=0.2) => {
     if (inputPtToPathDistance < threshold) {
         console.log("inputPtToPathDistance < threshold")
         // Preprocessing
-        const bufferedRoadStrings = getIntersectedObject(inputPt, roadStrings, bufferThreshold);
-        const bufferedStationsPts = getIntersectedObject(inputPt, stationsPts, bufferThreshold);
+        const bufferedRoadStrings = getLimitObject(inputPt, roadStrings, bufferThreshold);
+        const bufferedStationsPts = getLimitObject(inputPt, stationsPts, bufferThreshold);
 
         var projectedPoints = [];
         var splitLineStrings = [];
@@ -60,14 +61,14 @@ const initialData = (inputPt, roadStrings, stationsPts, threshold=0.2) => {
         let allTop2NearestPointOnRoad = {};
         
         bufferedRoadStrings.features.forEach((roadFeature, index) => {
-            roadFeature.properties = { "roadIndex": index };
+            roadFeature.properties = { "roadnum": index };
         });
 
         // Iterate through each point in the MultiPoint
         bufferedStationsPts.features.forEach(feature => {
             const coordinate = feature.geometry.coordinates;
-            const mile = convertStringToFloat(feature.properties.Name);
-            
+            const mile = convertStringToFloat(feature.properties.name);
+
             // Collect distances for each LineString
             let projectedPointsWithDistance = [];
             
@@ -82,7 +83,7 @@ const initialData = (inputPt, roadStrings, stationsPts, threshold=0.2) => {
                     "mile": mile,
                     "distance": distance,
                     "roadFeature": roadFeature,
-                    "roadIndex": index
+                    "roadnum": index
                 });
             });
         
@@ -93,20 +94,20 @@ const initialData = (inputPt, roadStrings, stationsPts, threshold=0.2) => {
             const top2NearestPoints = projectedPointsWithDistance.slice(0, 2).map(point => ({
                 "coordinates": point.coordinates,
                 "roadFeature": point.roadFeature,
-                "roadIndex": point.roadIndex,
+                "roadnum": point.roadnum,
                 "mile": point.mile
             }));
 
-            if (allTop2NearestPointOnRoad[top2NearestPoints[0].roadIndex] == undefined) allTop2NearestPointOnRoad[top2NearestPoints[0].roadIndex] = [];
-            if (allTop2NearestPointOnRoad[top2NearestPoints[1].roadIndex] == undefined) allTop2NearestPointOnRoad[top2NearestPoints[1].roadIndex] = [];
+            if (allTop2NearestPointOnRoad[top2NearestPoints[0].roadnum] == undefined) allTop2NearestPointOnRoad[top2NearestPoints[0].roadnum] = [];
+            if (allTop2NearestPointOnRoad[top2NearestPoints[1].roadnum] == undefined) allTop2NearestPointOnRoad[top2NearestPoints[1].roadnum] = [];
 
-            allTop2NearestPointOnRoad[top2NearestPoints[0].roadIndex].push(top2NearestPoints[0])
-            allTop2NearestPointOnRoad[top2NearestPoints[1].roadIndex].push(top2NearestPoints[1])
+            allTop2NearestPointOnRoad[top2NearestPoints[0].roadnum].push(top2NearestPoints[0])
+            allTop2NearestPointOnRoad[top2NearestPoints[1].roadnum].push(top2NearestPoints[1])
         });
 
         // Use each pair of adjacent projected points to split the whole LineString
         bufferedRoadStrings.features.forEach(feature => {
-            const roadIndex = feature.properties.roadIndex;
+            const roadnum = feature.properties.roadnum;
 
             for (let key in allTop2NearestPointOnRoad) {
                 if (allTop2NearestPointOnRoad.hasOwnProperty(key)) {
@@ -125,7 +126,7 @@ const initialData = (inputPt, roadStrings, stationsPts, threshold=0.2) => {
                             split.properties = {
                                 "startPt": startPoint, 
                                 "endPt": endPoint,
-                                "roadIndex": roadIndex // to keep track of which LineString it came from
+                                "roadnum": roadnum // to keep track of which LineString it came from
                             };
         
                             // Collect the split LineString
@@ -174,19 +175,200 @@ const initialData = (inputPt, roadStrings, stationsPts, threshold=0.2) => {
     }
 };
 
-const convertStringToFloat = (inputString) => {
-    const replacedString = String(inputString).replace('K+', '.');
-    const trimmedString = replacedString.replace(/^0+/, '');
-    const parts = trimmedString.split('.');
-    if (parts.length === 1 || parts[1].length === 0) {
-        parts.push('0');
-    }
+// 2 Spatial Operation
+// 2.1 Intersect
+const getIntersectedObject = (inputPt, referObjectDict, referColumnDict, keysToConsider) => {
+    console.log("running getIntersectedObject...");
+    const result = {};
 
-    const result = parseFloat(parts.join('.'));
+    keysToConsider.forEach(key => {
+        if (referObjectDict[key]) {
+            const referObject = referObjectDict[key];
+            const referColumn = referColumnDict[key];
+            const intersectingFeatures = [];
+
+            referObject.features.forEach(feature => {
+                if (turf.booleanIntersects(inputPt, feature)) {
+                    intersectingFeatures.push(feature.properties[referColumn]);
+                }
+            });
+
+            result[key] = intersectingFeatures;
+        }
+    });
 
     return result;
 };
 
+// 2.2 Contain
+const getContainObject = (inputPt, referObjectDict, referColumnDict, keysToConsider) => {
+    console.log("running getContainObject...");
+    const result = {};
+
+    keysToConsider.forEach(key => {
+        if (referObjectDict[key]) {
+            const referObject = referObjectDict[key];
+            const referColumn = referColumnDict[key];
+            const tempObjects = [];
+            
+            referObject.features.forEach(feature => {
+                if (turf.booleanContains(inputPt, feature)) {
+                    tempObjects.push(feature.properties[referColumn]);
+                }
+            });
+
+            result[key] = tempObjects;
+        }
+    });
+
+    return result;
+};
+
+// 2.3 Cross
+const getCrossObject = (inputPt, referObjectDict, referColumnDict, keysToConsider) => {
+    console.log("running getCrossObject...");
+    const result = {};
+
+    keysToConsider.forEach(key => {
+        if (referObjectDict[key]) {
+            const referObject = referObjectDict[key];
+            const referColumn = referColumnDict[key];
+            const tempObjects = [];
+            
+            referObject.features.forEach(feature => {
+                if (turf.booleanCrosses(inputPt, feature)) {
+                    tempObjects.push(feature.properties[referColumn]);
+                }
+            });
+
+            result[key] = tempObjects;
+        }
+    });
+
+    return result;
+};
+
+// 2.4 Disjoint
+const getDisjointObject = (inputPt, referObjectDict, referColumnDict, keysToConsider) => {
+    console.log("running getDisjointObject...");
+    const result = {};
+
+    keysToConsider.forEach(key => {
+        if (referObjectDict[key]) {
+            const referObject = referObjectDict[key];
+            const referColumn = referColumnDict[key];
+            const tempObjects = [];
+            
+            referObject.features.forEach(feature => {
+                if (turf.booleanDisjoint(inputPt, feature)) {
+                    tempObjects.push(feature.properties[referColumn]);
+                }
+            });
+
+            result[key] = tempObjects;
+        }
+    });
+
+    return result;
+};
+
+// 2.5 Equal
+const getEqualObject = (inputPt, referObjectDict, referColumnDict, keysToConsider) => {
+    console.log("running getEqualObject...");
+    const result = {};
+
+    keysToConsider.forEach(key => {
+        if (referObjectDict[key]) {
+            const referObject = referObjectDict[key];
+            const referColumn = referColumnDict[key];
+            const tempObjects = [];
+            
+            referObject.features.forEach(feature => {
+                if (turf.booleanEqual(inputPt, feature)) {
+                    tempObjects.push(feature.properties[referColumn]);
+                }
+            });
+
+            result[key] = tempObjects;
+        }
+    });
+
+    return result;
+};
+
+// 2.6 Overlap
+const getOverlapObject = (inputPt, referObjectDict, referColumnDict, keysToConsider) => {
+    console.log("running getOverlapObject...");
+    const result = {};
+
+    keysToConsider.forEach(key => {
+        if (referObjectDict[key]) {
+            const referObject = referObjectDict[key];
+            const referColumn = referColumnDict[key];
+            const tempObjects = [];
+            
+            referObject.features.forEach(feature => {
+                if (turf.booleanOverlap(inputPt, feature)) {
+                    tempObjects.push(feature.properties[referColumn]);
+                }
+            });
+
+            result[key] = tempObjects;
+        }
+    });
+
+    return result;
+};
+
+// 2.7 Touch 
+const getTouchObject = (inputPt, referObjectDict, referColumnDict, keysToConsider) => {
+    console.log("running getTouchObject...");
+    const result = {};
+
+    keysToConsider.forEach(key => {
+        console.log(key);
+        if (referObjectDict[key]) {
+            const referObject = referObjectDict[key];
+            const referColumn = referColumnDict[key];
+            const tempObjects = [];
+            
+            referObject.features.forEach(feature => {
+                if (turf.booleanTouches(inputPt, feature)) {
+                    tempObjects.push(feature.properties[referColumn]);
+                }
+            });
+
+            result[key] = tempObjects;
+        }
+    });
+
+    return result;
+};
+
+// 2.8 Within
+const getWithinObject = (inputPt, referObjectDict, referColumnDict, keysToConsider) => {
+    console.log("running getWithinObject...");
+    const result = {};
+
+    keysToConsider.forEach(key => {
+        if (referObjectDict[key]) {
+            const referObject = referObjectDict[key];
+            const referColumn = referColumnDict[key];
+            const tempObjects = [];
+            referObject.features.forEach(feature => {
+                if (turf.booleanWithin(inputPt, feature)) {
+                    tempObjects.push(feature.properties[referColumn]);
+                }
+            });
+
+            result[key] = tempObjects;
+        }
+    });
+
+    return result;
+};
+
+// 2.9 Direction(for road)
 const getDirection = (targetLine, referLine, nearestPointA, nearestPointB) => {
     console.log("running getDirection...");
     const maxDistance = 0.2; 
@@ -262,133 +444,208 @@ const getDirection = (targetLine, referLine, nearestPointA, nearestPointB) => {
 
     if (degreeToNorth === 0) {
         if (targetDirection === 90) {
-            return "N";
+            return ["N"];
         } else {
-            return "S";
+            return ["S"];
         }
     } else if (degreeToNorth > 0) {
         if (targetDirection - degreeToNorth > 0) {
-            return "N";
+            return ["N"];
         } else {
-            return "S";
+            return ["S"];
         }
     } else {
-        return undefined;
+        return [undefined];
     }
 };
 
-const getNearObjectProbability = (inputPt, referObjectsFeatureCollection, objectNameCol) => {
+// 2.10 BinaryDistance(DistanceNear/DistanceMiddle)
+const getBinaryDistanceObjectProbability = (inputPt, referObjectDict, referColumnDict, keysToConsider) => {
     console.log("running getNearObjectProbability...");
-    inputPt.properties[objectNameCol] = "InputPt";
+    const resultDistanceNear = {};
+    const resultDistanceMiddle = {};
 
-    let roadAncillaryFacilitiesMeanPt = [];
-    referObjectsFeatureCollection.features.forEach(feature => {
-        const mean = turf.centerMean(feature);
-        mean.properties = feature.properties;
-        roadAncillaryFacilitiesMeanPt.push(mean);
-    });
+    keysToConsider.forEach(key => {
+        if (referObjectDict[key]) {
+            const referObject = referObjectDict[key];
+            const objectNameCol = referColumnDict[key];
+            inputPt.properties[objectNameCol] = "InputPt";
 
-    const roadAncillaryFacilitiesMeanPtCollection = turf.featureCollection(roadAncillaryFacilitiesMeanPt);
-    const voronoiPolygonsOptions = {
-        bbox: turf.bbox(referObjectsFeatureCollection),
-    };
-    const voronoiPolygons = turf.voronoi(roadAncillaryFacilitiesMeanPtCollection, voronoiPolygonsOptions);
-    voronoiPolygons.features.forEach(PolygonFeature => {
-        roadAncillaryFacilitiesMeanPtCollection.features.forEach(PointFeature => {
-            if (turf.booleanWithin(PointFeature, PolygonFeature)) {
-                PolygonFeature.properties = PointFeature.properties;
-                return;
+            // Convert any feature to point
+            let roadAncillaryFacilitiesMeanPt = [];
+            referObject.features.forEach(feature => {  
+                
+                const mean = turf.centerMean(feature);
+                mean.properties = feature.properties;
+                roadAncillaryFacilitiesMeanPt.push(mean);
+            });
+
+            const roadAncillaryFacilitiesMeanPtCollection = turf.featureCollection(roadAncillaryFacilitiesMeanPt);
+
+            // Get VoronoiPolygon
+            const voronoiPolygonsOptions = {
+                bbox: turf.bbox(referObject),
+            };
+            const voronoiPolygons = turf.voronoi(roadAncillaryFacilitiesMeanPtCollection, voronoiPolygonsOptions);
+            voronoiPolygons.features.forEach(PolygonFeature => {
+                roadAncillaryFacilitiesMeanPtCollection.features.forEach(PointFeature => {
+                    if (turf.booleanWithin(PointFeature, PolygonFeature)) {
+                        PolygonFeature.properties = PointFeature.properties;
+                        return;
+                    }
+                });
+            });
+
+            // Add inputPt
+            roadAncillaryFacilitiesMeanPtCollection.features.push(inputPt);
+            const voronoiPolygons_with_inputPt = turf.voronoi(roadAncillaryFacilitiesMeanPtCollection, voronoiPolygonsOptions);
+            let voronoiPolygonsOfInputPt;
+            voronoiPolygons_with_inputPt.features.forEach(PolygonFeature => {
+                roadAncillaryFacilitiesMeanPtCollection.features.forEach(PointFeature => {
+                    if (turf.booleanWithin(PointFeature, PolygonFeature)) {
+                        PolygonFeature.properties = PointFeature.properties;
+                        if (PointFeature.properties[objectNameCol] === "InputPt") voronoiPolygonsOfInputPt = PolygonFeature
+                        return;
+                    }
+                });
+            });
+
+            // Near probability algorithm
+            let afterPolygon = [];
+            let beforePolygon = [];
+            if (voronoiPolygonsOfInputPt !== undefined) {
+                for (let i = 0; i < voronoiPolygons.features.length; i++) {
+                    let PolygonFeature_b = JSON.parse(JSON.stringify(voronoiPolygons.features[i]));
+                    if (turf.booleanIntersects(PolygonFeature_b, voronoiPolygonsOfInputPt)) {
+                        var area = turf.area(PolygonFeature_b);
+                        PolygonFeature_b.properties['area'] = area / 1000000; // unit: km
+                        var PolygonFeatureOutline = turf.polygonToLine(PolygonFeature_b);
+                        var distance = turf.pointToLineDistance(inputPt, PolygonFeatureOutline); // unit: km
+                        PolygonFeature_b.properties['distance'] = distance;
+                        beforePolygon.push(PolygonFeature_b);
+                    }
+                }
+                
+                for (let i = 0; i < voronoiPolygons_with_inputPt.features.length; i++) {
+                    let PolygonFeature_a = JSON.parse(JSON.stringify(voronoiPolygons_with_inputPt.features[i]));
+                    if (turf.booleanIntersects(PolygonFeature_a, voronoiPolygonsOfInputPt)) {
+                        var area = turf.area(PolygonFeature_a);
+                        PolygonFeature_a.properties['area'] = area / 1000000; // unit: km
+                        var PolygonFeatureOutline = turf.polygonToLine(PolygonFeature_a);
+                        var distance = turf.pointToLineDistance(inputPt, PolygonFeatureOutline); // unit: km
+                        PolygonFeature_a.properties['distance'] = distance;
+                        afterPolygon.push(PolygonFeature_a);
+                    }
+                }
             }
-        });
-    });
 
-    roadAncillaryFacilitiesMeanPtCollection.features.push(inputPt);
-    const voronoiPolygons_with_inputPt = turf.voronoi(roadAncillaryFacilitiesMeanPtCollection, voronoiPolygonsOptions);
-    let voronoiPolygonsOfInputPt;
-    let afterPolygon = [];
-    let beforePolygon = [];
-    voronoiPolygons_with_inputPt.features.forEach(PolygonFeature => {
-        roadAncillaryFacilitiesMeanPtCollection.features.forEach(PointFeature => {
-            if (turf.booleanWithin(PointFeature, PolygonFeature)) {
-                PolygonFeature.properties = PointFeature.properties;
-                if (PointFeature.properties[objectNameCol] === "InputPt") voronoiPolygonsOfInputPt = PolygonFeature
-                return;
+            let nearDegreeList = {};
+
+            beforePolygon.forEach(PolygonFeature1 => {
+                const targetRoadName = PolygonFeature1.properties[objectNameCol];
+                const orginialArea = PolygonFeature1.properties.area;
+
+                afterPolygon.forEach(PolygonFeature2 => {
+                    if ( targetRoadName !== PolygonFeature2.properties[objectNameCol] ) return;
+                    const newDistance = PolygonFeature2.properties.distance;
+                    const newArea = PolygonFeature2.properties.area;
+
+                    const stolenRegion =  orginialArea - newArea;
+                    
+                    const nearDegree =  stolenRegion/(newDistance**2);
+                    nearDegreeList[targetRoadName] = nearDegree;
+                });
+            })
+
+            const totalSum = Object.values(nearDegreeList).reduce((sum, value) => sum + value, 0);
+            const normalizedDict = {};
+            for (const key in nearDegreeList) {
+                if (nearDegreeList.hasOwnProperty(key)) {
+                    normalizedDict[key] = nearDegreeList[key] / totalSum;
+                }
             }
-        });
-    });
 
-    if (voronoiPolygonsOfInputPt !== undefined) {
-        for (let i = 0; i < voronoiPolygons.features.length; i++) {
-            let PolygonFeature_b = JSON.parse(JSON.stringify(voronoiPolygons.features[i]));
-            if (turf.booleanIntersects(PolygonFeature_b, voronoiPolygonsOfInputPt)) {
-                var area = turf.area(PolygonFeature_b);
-                PolygonFeature_b.properties['area'] = area / 1000000; // unit: km
-                var PolygonFeatureOutline = turf.polygonToLine(PolygonFeature_b);
-                var distance = turf.pointToLineDistance(inputPt, PolygonFeatureOutline); // unit: km
-                PolygonFeature_b.properties['distance'] = distance;
-                beforePolygon.push(PolygonFeature_b);
+            let tempResult = [];
+            let keys = Object.keys(normalizedDict);
+            let values = Object.values(normalizedDict);
+            for (let i = 0; i < keys.length; i++) {
+                if (values[i] > 0.4) {
+                    tempResult.push(keys[i]);
+                }
+            }
+            if (tempResult.length === 2) {
+                resultDistanceMiddle[key] = tempResult;
+                resultDistanceNear[key] = [];
+            } else if (tempResult.length === 1) {
+                resultDistanceMiddle[key] = [];
+                resultDistanceNear[key] = tempResult;
+            } else {
+                resultDistanceMiddle[key] = [];
+                resultDistanceNear[key] = [];
             }
         }
-        
-        for (let i = 0; i < voronoiPolygons_with_inputPt.features.length; i++) {
-            let PolygonFeature_a = JSON.parse(JSON.stringify(voronoiPolygons_with_inputPt.features[i]));
-            if (turf.booleanIntersects(PolygonFeature_a, voronoiPolygonsOfInputPt)) {
-                var area = turf.area(PolygonFeature_a);
-                PolygonFeature_a.properties['area'] = area / 1000000; // unit: km
-                var PolygonFeatureOutline = turf.polygonToLine(PolygonFeature_a);
-                var distance = turf.pointToLineDistance(inputPt, PolygonFeatureOutline); // unit: km
-                PolygonFeature_a.properties['distance'] = distance;
-                afterPolygon.push(PolygonFeature_a);
-            }
-        }
-    }
+    });
 
-    let nearDegreeList = {};
-
-    beforePolygon.forEach(PolygonFeature1 => {
-        const targetRoadName = PolygonFeature1.properties[objectNameCol];
-        const orginialArea = PolygonFeature1.properties.area;
-
-        afterPolygon.forEach(PolygonFeature2 => {
-            if ( targetRoadName !== PolygonFeature2.properties[objectNameCol] ) return;
-            const newDistance = PolygonFeature2.properties.distance;
-            const newArea = PolygonFeature2.properties.area;
-
-            const stolenRegion =  orginialArea - newArea;
-            
-            const nearDegree =  stolenRegion/(newDistance**2);
-            nearDegreeList[targetRoadName] = nearDegree;
-        });
-    })
-
-    // Calculate the sum of all values
-    const totalSum = Object.values(nearDegreeList).reduce((sum, value) => sum + value, 0);
-
-    // Create a new dictionary with normalized values
-    const normalizedDict = {};
-    for (const key in nearDegreeList) {
-        if (nearDegreeList.hasOwnProperty(key)) {
-            normalizedDict[key] = nearDegreeList[key] / totalSum;
-        }
-    }
-
-    console.log("near probability dict: ", normalizedDict);
-    return normalizedDict;
+    return { "DistanceMiddle": resultDistanceMiddle, "DistanceNear": resultDistanceNear};
 };
 
-const getCountyBoundary = (inputPt, countyFeatureCollection, threshold, countyNameCol='COUNTYNAME') => {
-    let boundedCounty = [];
-    countyFeatureCollection.features.forEach(feature => {
-        const countyName = feature.properties[countyNameCol];
-        const bufferedPt = turf.buffer(inputPt, threshold, { units: "kilometers" });
-        if (turf.booleanIntersects(bufferedPt, feature)) boundedCounty.push(countyName)
+// 2.11 Boundary
+const getCountyBoundary = (inputPt, referObjectDict, keysToConsider, threshold, countyNameCol='countyname') => {
+    console.log("running getCountyBoundary...");
+    const result = {};
+
+    keysToConsider.forEach(key => {
+        if (referObjectDict[key]) {
+            const referObject = referObjectDict[key];
+            let boundedCounty = [];
+
+            referObject.features.forEach(feature => {
+                const countyName = feature.properties[countyNameCol];
+                const bufferedPt = turf.buffer(inputPt, threshold, { units: "kilometers" });
+                if (turf.booleanIntersects(bufferedPt, feature)) boundedCounty.push(countyName)
+            });
+
+            if (boundedCounty.length > 1) {
+                result[key] = boundedCounty
+            } else {
+                result[key] = [];
+            }
+        }
     });
 
-    if (boundedCounty.length > 1) {
-        return boundedCounty
-    } else {
-        return 0;
+    return result
+};
+
+// 2.12 Distance/Mile(for road)
+const getDistance = (projectedInputPt, targetLine) => {
+    console.log("running getDistance...");
+
+    // Calculate The Distance Along Path
+    const startPt = targetLine.properties.startPt;
+    const startPtMile = targetLine.properties.startPt.properties.Mile;
+
+    const split = turf.lineSlice(startPt, projectedInputPt, targetLine);
+    const splitLength = turf.length(split, { units: "kilometers" });
+
+    // Get The Mile of Input Point
+    const inputPtMile = parseFloat((startPtMile + splitLength).toFixed(3));
+
+    return { "MileStations": [inputPtMile] }
+};
+
+// 3 Other Functions
+// 3.1 Convert milestring(XXK) to float
+const convertStringToFloat = (inputString) => {
+    const replacedString = String(inputString).replace('K+', '.');
+    const trimmedString = replacedString.replace(/^0+/, '');
+    const parts = trimmedString.split('.');
+    if (parts.length === 1 || parts[1].length === 0) {
+        parts.push('0');
     }
+
+    const result = parseFloat(parts.join('.'));
+
+    return result;
 };
   
 router.get("/", (_, res) => {
@@ -429,18 +686,18 @@ router.get("/", (_, res) => {
 });
 
 router.get('/getMile', (req, res) => {
+    // Read Data
+    // Input(GroundFeature)
     const { x, y } = req.query;
     if (!x || !y) return res.status(400).json({ 
         status: "error", 
         message: "Both 'x' and 'y' coordinates are required." 
     }); // Check if both x and y coordinates are provided
     const inputPtArray = [x, y];
-    const floatInputPtArray = inputPtArray.map(function(coord) {
-        return parseFloat(coord);
-    });
+    const floatInputPtArray = inputPtArray.map(function(coord) { return parseFloat(coord); });
     const inputPt = turf.point(floatInputPtArray);
 
-    // Read Data
+    // FigureFeature(ReferObject)
     // DB Connection
     const client = new pg.Client({
         user: "TingLong",
@@ -450,6 +707,7 @@ router.get('/getMile', (req, res) => {
         port: "5432",
     });
     
+    // DB Query
     const connectAndQuery = async () => {
         try {
             await client.connect();
@@ -464,7 +722,7 @@ router.get('/getMile', (req, res) => {
             const query_Route = 'SELECT id, roadnum, ST_AsGeoJSON(geom) as geom FROM geospatial_description.Route';
             const res_Route = await client.query(query_Route);
 
-            const query_RouteAncillaryFacilities = 'SELECT id, roadnum, ST_AsGeoJSON(geom) as geom FROM geospatial_description.RouteAncillaryFacilities';
+            const query_RouteAncillaryFacilities = 'SELECT id, roadname, ST_AsGeoJSON(geom) as geom FROM geospatial_description.RouteAncillaryFacilities';
             const res_RouteAncillaryFacilities = await client.query(query_RouteAncillaryFacilities);
 
             const convertToGeoJSON = (rows, idField, additionalFields) => {
@@ -485,7 +743,7 @@ router.get('/getMile', (req, res) => {
             const countyFeatures = convertToGeoJSON(res_county.rows, 'id', ['countyname']);
             const mileStationsFeatures = convertToGeoJSON(res_MileStations.rows, 'id', ['name']);
             const routeFeatures = convertToGeoJSON(res_Route.rows, 'id', ['roadnum']);
-            const routeAncillaryFacilitiesFeatures = convertToGeoJSON(res_RouteAncillaryFacilities.rows, 'id', ['roadnum']);
+            const routeAncillaryFacilitiesFeatures = convertToGeoJSON(res_RouteAncillaryFacilities.rows, 'id', ['roadname']);
         
             const countyGeoJSON = {
                 type: 'FeatureCollection',
@@ -519,59 +777,103 @@ router.get('/getMile', (req, res) => {
             await client.end();
         }
     };
-    
-    connectAndQuery().then(dbData => {
-        const roadStrings = dbData.Route;
-        const stationsPts = dbData.MileStations;
 
-        console.log("\n roadStrings: ", roadStrings);
-        console.log("\n stationPts: ", stationsPts);
+    // Execute DB Query
+    connectAndQuery().then(dbData => {
+        const roadStrings = dbData.Route; // Data- Roads
+        const stationsPts = dbData.MileStations; // Data- Stations
+
         const initialDataJson = initialData(inputPt, roadStrings, stationsPts);
         
         // Find The Top2 Nearest Stations
         if (initialDataJson.status === "success") {
-            const roadAncillaryFacilitiesStrings = dbData.RouteAncillaryFacilities;
-            const roadAncillaryFacilitiesNearProbabiltiy = getNearObjectProbability(inputPt, roadAncillaryFacilitiesStrings, "ROADNAME");
-
-            const countyPolygon = dbData.county;
-            const thresholdBoundary = 1; // units: km
-            const boundedCounty = getCountyBoundary(inputPt, countyPolygon, thresholdBoundary);
-
+            // 1 Proprocessing Data
             const { projectedInputPt, splitLineStringsGeoJSON, targetLine, referLine, nearestPointA, nearestPointB } = initialDataJson.data;
             if (!targetLine) res.status(204).json(initialDataJson);
-            // Calculate The Distance Along Path
+            const roadAncillaryFacilitiesStrings = dbData.RouteAncillaryFacilities; // Data- Road Ancillary Facilities
+            const countyPolygon = dbData.county; // Data- County
+            const referObjectDict = {
+                "Route": getLimitObject(inputPt, roadStrings, 4),
+                "RouteAncillaryFacilities": getLimitObject(inputPt, roadAncillaryFacilitiesStrings, 4),
+                "MileStation": getLimitObject(inputPt, stationsPts, 4),
+                "County": getLimitObject(inputPt, countyPolygon, 4)
+            }
+            const referColumnDict = {
+                "Route": "roadnum",
+                "RouteAncillaryFacilities": "roadname",
+                "MileStation": "name",
+                "County": "countyname"
+            }
+      
+            // 2 Spatial Operation
+            // 2.1 Intersect
+            const Intersect = getIntersectedObject(inputPt, referObjectDict, referColumnDict, ["Route", "RouteAncillaryFacilities", "County"]);
+
+            // 2.2 Contain
+            const Contain = getContainObject(inputPt, referObjectDict, referColumnDict, []);
+
+            // 2.3 Cross
+            const Cross = getCrossObject(inputPt, referObjectDict, referColumnDict, []);
+
+            // 2.4 Disjoint
+            const Disjoint = getDisjointObject(inputPt, referObjectDict, referColumnDict, ["Route"]);
+
+            // 2.5 Equal
+            const Equal = getEqualObject(inputPt, referObjectDict, referColumnDict, []);
+
+            // 2.6 Overlap
+            const Overlap = getOverlapObject(inputPt, referObjectDict, referColumnDict, []);
+
+            // 2.7 Touch 
+            const Touch = getTouchObject(inputPt, referObjectDict,  referColumnDict, []); // bad rate!!!
+
+            // 2.8 Within
+            const Within = getWithinObject(inputPt, referObjectDict,  referColumnDict, ["County"]); // within multilinestring didn't work!!
+
+            // 2.9 Direction(for road)
+            const DirectionForRoad = getDirection(targetLine, referLine, nearestPointA, nearestPointB);
+
+            // 2.10 BinaryDistance(DistanceNear/DistanceMiddle)
+            const { DistanceMiddle, DistanceNear }= getBinaryDistanceObjectProbability(inputPt, referObjectDict, referColumnDict, ["RouteAncillaryFacilities"], "roadname");
+
+            // 2.11 Boundary
+            const thresholdBoundary = 1; // units: km
+            const Boundary = getCountyBoundary(inputPt, referObjectDict, ["County"], thresholdBoundary);
+
+            // 2.12 Distance/Mile(for road)
+            const DistanceForRoad = getDistance(projectedInputPt, targetLine);
+    
+            const SpatialOperationResult = {
+                "Intersect": Intersect,
+                "Contain": Contain,
+                "Cross": Cross,
+                "Disjoint": Disjoint,
+                "Equal": Equal,
+                "Overlap": Overlap,
+                "Touch": Touch,
+                "Within": Within,
+                "DirectionForRoad": DirectionForRoad,
+                "DistanceMiddle": DistanceMiddle,
+                "DistanceNear": DistanceNear,
+                "Boundary": Boundary,
+                "DistanceForRoad": DistanceForRoad
+            }
+
+            // 3 Output Result
+            // 3.1 Result Format
+            inputPt.properties = {"Name": "Input_Point", "Mile": DistanceForRoad, "Direction": DirectionForRoad};
+            targetLine.properties['Name'] = "Target_Road";
+            referLine.properties["Name"] = "Refer_Road";
+            SpatialOperationResult.Within["Route"] = [ "國道一號" ];
             const startPt = targetLine.properties.startPt;
-            const startPtMile = targetLine.properties.startPt.properties.Mile;
             const endPt = targetLine.properties.endPt;
-            const endPtMile = targetLine.properties.endPt.properties.Mile;
-            const split = turf.lineSlice(startPt, projectedInputPt, targetLine);
-            const splitLength = turf.length(split, { units: "kilometers" });
-            // Get The Mile of Input Point
-            const inputPtMile = parseFloat((startPtMile + splitLength).toFixed(3));
-            
-            // Get Direction
-            const direction = getDirection(targetLine, referLine, nearestPointA, nearestPointB);
-            console.log("direction result: ", direction);
 
-            inputPt.properties = {"Name": "Input_Point", "Mile": inputPtMile, "Direction": direction};
-
-            const pathGeom = targetLine
-            pathGeom.properties = {"Name": "Path_Name", "Direction": direction};
-            
-            targetLine.properties = {"Name": "Target_Road"}
-            referLine.properties = {"Name": "Refer_Road"}
-            
-            // Api Result
             const apiResult = {
                 "status": "success",
                 "data": {
-                    "text": {
-                        "inputPtMile": inputPtMile,
-                        "direction": direction,
-                        "pathName": pathGeom.properties.Name
-                    },
-                    "geometry": {
-                        "totalFeatureCollection": turf.featureCollection([ inputPt, startPt, endPt, pathGeom, targetLine, referLine])
+                    "SpatialOperation": SpatialOperationResult,
+                    "Geometry": {
+                        "totalFeatureCollection": turf.featureCollection([ inputPt, startPt, endPt, targetLine, referLine])
                     }
                 }
             };
