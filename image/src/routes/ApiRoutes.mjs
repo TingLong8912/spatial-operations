@@ -633,7 +633,7 @@ const getDistance = (projectedInputPt, targetLine) => {
     // Get The Mile of Input Point
     const inputPtMile = parseFloat((startPtMile + splitLength).toFixed(3));
 
-    return { "MileStations": [inputPtMile] }
+    return { "MileStation": [inputPtMile] }
 };
 
 // 3 Other Functions
@@ -719,8 +719,8 @@ router.get('/getMile', (req, res) => {
             const query_county = 'SELECT id, countyname, ST_AsGeoJSON(geom) as geom FROM geospatial_description.county';
             const res_county = await client.query(query_county);
             
-            const query_MileStations = 'SELECT id, name, ST_AsGeoJSON(geom) as geom FROM geospatial_description.MileStations';
-            const res_MileStations = await client.query(query_MileStations);
+            const query_MileStation = 'SELECT id, name, ST_AsGeoJSON(geom) as geom FROM geospatial_description.MileStation';
+            const res_MileStation = await client.query(query_MileStation);
 
             const query_Route = 'SELECT id, roadnum, ST_AsGeoJSON(geom) as geom FROM geospatial_description.Route';
             const res_Route = await client.query(query_Route);
@@ -744,7 +744,7 @@ router.get('/getMile', (req, res) => {
             };
           
             const countyFeatures = convertToGeoJSON(res_county.rows, 'id', ['countyname']);
-            const mileStationsFeatures = convertToGeoJSON(res_MileStations.rows, 'id', ['name']);
+            const mileStationFeatures = convertToGeoJSON(res_MileStation.rows, 'id', ['name']);
             const routeFeatures = convertToGeoJSON(res_Route.rows, 'id', ['roadnum']);
             const routeAncillaryFacilitiesFeatures = convertToGeoJSON(res_RouteAncillaryFacilities.rows, 'id', ['roadname']);
         
@@ -753,9 +753,9 @@ router.get('/getMile', (req, res) => {
                 features: countyFeatures
             };
         
-            const mileStationsGeoJSON = {
+            const mileStationGeoJSON = {
                 type: 'FeatureCollection',
-                features: mileStationsFeatures
+                features: mileStationFeatures
             };
         
             const routeGeoJSON = {
@@ -770,7 +770,7 @@ router.get('/getMile', (req, res) => {
         
             return {
                 county: countyGeoJSON,
-                MileStations: mileStationsGeoJSON,
+                MileStation: mileStationGeoJSON,
                 Route: routeGeoJSON,
                 RouteAncillaryFacilities: routeAncillaryFacilitiesGeoJSON
             };
@@ -784,7 +784,7 @@ router.get('/getMile', (req, res) => {
     // Execute DB Query
     connectAndQuery().then(dbData => {
         const roadStrings = dbData.Route; // Data- Roads
-        const stationsPts = dbData.MileStations; // Data- Stations
+        const stationsPts = dbData.MileStation; // Data- Stations
 
         const initialDataJson = initialData(inputPt, roadStrings, stationsPts);
         
