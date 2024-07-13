@@ -858,7 +858,7 @@ router.get('/getMile', (req, res) => {
                 "DirectionForRoad": DirectionForRoad,
                 "DistanceMiddle": DistanceMiddle,
                 "DistanceNear": DistanceNear,
-                "Boundary": Boundary,
+                "BoundaryForCounty": Boundary,
                 "DistanceForRoad": DistanceForRoad
             }
 
