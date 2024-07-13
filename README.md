@@ -49,4 +49,4 @@ Here is an example of one of the spatial relationships:
 
 Under the `Geometry` field, the first level records `totalFeatureCollection`, the second level records five spatial objects are recorded, including the input point, the road the input point maps to, another road the input point maps to, and the mileage marker points before and after the input point.
 
-You can access the `Geometry` field under `totalFeatureCollection` to retrieve the GeoJSON of the five spatial objects. This API wraps them into a FeatureCollection geometry type.
+You can access the `totalFeatureCollection` field under `Geometry` to retrieve the GeoJSON of the five spatial objects. This API wraps them into a FeatureCollection geometry type.
