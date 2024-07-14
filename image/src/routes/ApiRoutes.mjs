@@ -631,7 +631,7 @@ const getDistance = (projectedInputPt, targetLine) => {
     const splitLength = turf.length(split, { units: "kilometers" });
 
     // Get The Mile of Input Point
-    const inputPtMile = parseFloat((startPtMile + splitLength).toFixed(3));
+    const inputPtMile = str(parseFloat((startPtMile + splitLength).toFixed(3)))+"K";
 
     return { "MileStations": [inputPtMile] }
 };
