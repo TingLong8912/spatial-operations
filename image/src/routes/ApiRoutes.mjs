@@ -608,8 +608,8 @@ const getCountyBoundary = (inputPt, referObjectDict, keysToConsider, threshold, 
                 if (turf.booleanIntersects(bufferedPt, feature)) boundedCounty.push(countyName)
             });
 
-            if (boundedCounty.length > 1) {
-                result[key] = boundedCounty
+            if (boundedCounty.length === 2) {
+                result[key] = boundedCounty[0]+ "和" +boundedCounty[1]
             } else {
                 result[key] = [];
             }
