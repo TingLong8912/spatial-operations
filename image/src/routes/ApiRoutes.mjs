@@ -1,33 +1,13 @@
 import { Router } from 'express';
 import * as turf from '@turf/turf';
 import { features } from 'process';
-import { promises as fs } from 'fs';
+import { copyFileSync, promises as fs } from 'fs';
 import pg from 'pg';
 
 const router = Router();
 
 // 1 Basic Operation
-// 1.1 Find the nearest road of inputPt
-const findTop2NearestRoad = (inputPt, roadStrings) => {
-    console.log("running findTop2NearestRoad...")
-    let nearestPoints = [];
-    roadStrings.features.forEach(line => {
-        const nearestPoint = turf.nearestPointOnLine(line, inputPt, { units: "kilometers" });
-
-        const distance = nearestPoint.properties.dist;
-    
-        nearestPoints.push({ line, nearestPoint, distance });
-    });
-
-    nearestPoints.sort((a, b) => a.distance - b.distance);
-    
-    console.log("findTop2NearestRoad end")
-    return { 
-        "top2NearestRoad": nearestPoints.slice(0, 2).map(item => item.line), 
-        "top2NearestPoint": nearestPoints.slice(0, 2).map(item => item.nearestPoint)
-    };
-}
-
+// 1.1 Limit Objects
 const getLimitObject = (inputPt, referObject, bufferThreshold) => {
     const bufferedPoint = turf.buffer(inputPt, bufferThreshold, { units: 'kilometers' });
     var intersectingFeatures = [];
@@ -41,83 +21,96 @@ const getLimitObject = (inputPt, referObject, bufferThreshold) => {
     return turf.featureCollection(intersectingFeatures);
 };
 
+const findTheNearestRoad = (inputPt, bufferedRoadStrings, num = 1) => {
+    let nearestRoadList = [];
+    bufferedRoadStrings.features.forEach(feature => {
+        const projectedPoint = turf.nearestPointOnLine(feature, inputPt, { units: "kilometers" });
+        const distance = turf.distance(inputPt, projectedPoint);
+        const roadId = feature.properties.id;
+
+        nearestRoadList.push({
+            "distance": distance,
+            "roadFeature": feature,
+            "projectedPoint": projectedPoint, 
+            "roadId": roadId
+        });
+    });
+
+    // 按距離排序
+    nearestRoadList.sort((a, b) => a.distance - b.distance);
+
+    // 取最近的 num 個點
+    let topNNearestPoints = [];
+    let roadIds = new Set();
+
+    for (let point of nearestRoadList) {
+        if (!roadIds.has(point.roadId)) {
+            topNNearestPoints.push({
+                "coordinates": point.projectedPoint,
+                "roadFeature": point.roadFeature,
+                "roadId": point.roadId,
+                "distance": point.distance
+            });
+            roadIds.add(point.roadId); // 確保不重複添加同一條路
+        }
+        if (topNNearestPoints.length == num) break;
+    };
+
+    return topNNearestPoints;
+};
+
+
 // 1.2 Project inputPt and split the roadStrings
 const initialData = (inputPt, roadStrings, stationsPts, threshold=0.2) => {
     console.log("running initialData...");
-    var { top2NearestRoad, top2NearestPoint } = findTop2NearestRoad(inputPt, roadStrings);
 
-    const inputPtToPathDistance = top2NearestPoint[0]['properties']['dist'];
     const bufferThreshold = 4;
+    const bufferedRoadStrings = getLimitObject(inputPt, roadStrings, bufferThreshold);
+    const bufferedStationsPts = getLimitObject(inputPt, stationsPts, bufferThreshold);
+
+    const theNearestRoadOfInputPt = findTheNearestRoad(inputPt, bufferedRoadStrings);
+    const inputPtToPathDistance = theNearestRoadOfInputPt[0]['distance'];
 
     if (inputPtToPathDistance < threshold) {
         console.log("inputPtToPathDistance < threshold")
-        // Preprocessing
-        const bufferedRoadStrings = getLimitObject(inputPt, roadStrings, bufferThreshold);
-        const bufferedStationsPts = getLimitObject(inputPt, stationsPts, bufferThreshold);
-
-        var projectedPoints = [];
+ 
+        // 1 Proprocessing
         var splitLineStrings = [];
+        const allTop2NearestPointOnRoad = {};
 
-        let allTop2NearestPointOnRoad = {};
-        
-        bufferedRoadStrings.features.forEach((roadFeature, index) => {
-            roadFeature.properties = { "roadnum": index };
-        });
-
-        // Iterate through each point in the MultiPoint
+        // 1.1 Projecting StationPts: Iterate through each point in the MultiPoint
+        // 每一個樁號點要映射到兩個(雙向)道路
         bufferedStationsPts.features.forEach(feature => {
-            const coordinate = feature.geometry.coordinates;
+            const stationPt = turf.point(feature.geometry.coordinates);
             const mile = convertStringToFloat(feature.properties.name);
-
-            // Collect distances for each LineString
-            let projectedPointsWithDistance = [];
             
-            bufferedRoadStrings.features.forEach((roadFeature, index) => {
-                const point = turf.point(coordinate);
-                const projectedPoint = turf.nearestPointOnLine(roadFeature, point);
-                const distance = turf.distance(point, projectedPoint);
-                
-                // Collect projected points with distances
-                projectedPointsWithDistance.push({
-                    "coordinates": projectedPoint.geometry.coordinates,
-                    "mile": mile,
-                    "distance": distance,
-                    "roadFeature": roadFeature,
-                    "roadnum": index
-                });
-            });
-        
-            // Sort the projected points by distance
-            projectedPointsWithDistance.sort((a, b) => a.distance - b.distance);
-        
-            // Get the top 2 nearest points for the current bufferedStationsPts feature
-            const top2NearestPoints = projectedPointsWithDistance.slice(0, 2).map(point => ({
-                "coordinates": point.coordinates,
-                "roadFeature": point.roadFeature,
-                "roadnum": point.roadnum,
-                "mile": point.mile
-            }));
+            // Find the nearest road
+            const top2NearestPoints = findTheNearestRoad(stationPt, bufferedRoadStrings, 2);
 
-            if (allTop2NearestPointOnRoad[top2NearestPoints[0].roadnum] == undefined) allTop2NearestPointOnRoad[top2NearestPoints[0].roadnum] = [];
-            if (allTop2NearestPointOnRoad[top2NearestPoints[1].roadnum] == undefined) allTop2NearestPointOnRoad[top2NearestPoints[1].roadnum] = [];
+            // Create empty list to store stations on each roads
+            if (allTop2NearestPointOnRoad[top2NearestPoints[0].roadId] == undefined) allTop2NearestPointOnRoad[top2NearestPoints[0].roadId] = [];
+            if (allTop2NearestPointOnRoad[top2NearestPoints[1].roadId] == undefined) allTop2NearestPointOnRoad[top2NearestPoints[1].roadId] = [];
 
-            allTop2NearestPointOnRoad[top2NearestPoints[0].roadnum].push(top2NearestPoints[0])
-            allTop2NearestPointOnRoad[top2NearestPoints[1].roadnum].push(top2NearestPoints[1])
+            top2NearestPoints[0]['mile'] = mile;
+            top2NearestPoints[1]['mile'] = mile;
+            allTop2NearestPointOnRoad[top2NearestPoints[0].roadId].push(top2NearestPoints[0])
+            allTop2NearestPointOnRoad[top2NearestPoints[1].roadId].push(top2NearestPoints[1])
         });
 
-        // Use each pair of adjacent projected points to split the whole LineString
+        // 1.2 Split Road: Use each pair of adjacent projected points to split the whole LineString
+        // 迭代每一條道路，找到落在該道路的樁號點並切割
         bufferedRoadStrings.features.forEach(feature => {
-            const roadnum = feature.properties.roadnum;
+            const roadId = feature.properties.id;
 
             for (let key in allTop2NearestPointOnRoad) {
                 if (allTop2NearestPointOnRoad.hasOwnProperty(key)) {
                     const value = allTop2NearestPointOnRoad[key];
                     for (let i = 0; i < value.length - 1; i++) {
-                        const startPoint = turf.point(value[i].coordinates);
-                        const endPoint =  turf.point(value[i+1].coordinates);
+                        const startPoint = value[i].coordinates;
+                        const endPoint =  value[i+1].coordinates;
                         startPoint.properties = {"Name": "Start_Point", "Mile": value[i].mile};
                         endPoint.properties = {"Name": "End_Point", "Mile": value[i+1].mile};
-
+                       
                         if (turf.booleanIntersects(turf.buffer(feature, 1, { units: "meters" }), turf.buffer(startPoint, 1, { units: "meters" }))) {
                             // Split the LineString by the pair of points
                             const lineString = turf.lineString(feature.geometry.coordinates[0]);
@@ -126,9 +119,9 @@ const initialData = (inputPt, roadStrings, stationsPts, threshold=0.2) => {
                             split.properties = {
                                 "startPt": startPoint, 
                                 "endPt": endPoint,
-                                "roadnum": roadnum // to keep track of which LineString it came from
+                                "id": roadId // to keep track of which LineString it came from
                             };
-        
+                            
                             // Collect the split LineString
                             splitLineStrings.push(split);
                         }             
@@ -136,24 +129,24 @@ const initialData = (inputPt, roadStrings, stationsPts, threshold=0.2) => {
                 }
             }
         });
-
-        // Convert the splitLineStrings array to GeoJSON FeatureCollection
         const splitLineStringsGeoJSON = turf.featureCollection(splitLineStrings);
 
-        var { top2NearestRoad, top2NearestPoint } = findTop2NearestRoad(inputPt, splitLineStringsGeoJSON);
+        // 2 Get the Needing Geometry: targetline, referLine and the two endpoints mile of targeline
+        const top2NearestSplitRoad = findTheNearestRoad(inputPt, splitLineStringsGeoJSON, 2);
+        console.log("top2NearestSplitRoad: ", top2NearestSplitRoad);
+        const targetLine = top2NearestSplitRoad[0]['roadFeature'];
+        const referLine = top2NearestSplitRoad[1]['roadFeature'];
 
-        const targetLine = top2NearestRoad[0];
-        const referLine = top2NearestRoad[1];
-
-        const referLineCoords = turf.getCoords(referLine);
-        const referLineCoordsA = turf.point(referLineCoords[0]);
-        const referLineCoordsB = turf.point(referLineCoords[referLineCoords.length - 1]);
+        const targetLineCoords = turf.getCoords(targetLine);
+        const endPtA = turf.point(targetLineCoords[0]);
+        const endPtB = turf.point(targetLineCoords[targetLineCoords.length - 1]);
     
-        const nearestPointA = convertStringToFloat(turf.nearestPoint(referLineCoordsA, stationsPts).properties.Name);
-        const nearestPointB = convertStringToFloat(turf.nearestPoint(referLineCoordsB, stationsPts).properties.Name);
+        const nearestPointA = convertStringToFloat(turf.nearestPoint(endPtA, stationsPts).properties.Name);
+        const nearestPointB = convertStringToFloat(turf.nearestPoint(endPtB, stationsPts).properties.Name);
 
-        const projectedInputPt = top2NearestPoint[0];
+        const projectedInputPt = top2NearestSplitRoad[0].coordinates;
         
+        // 3 Output
         console.log("initialData successed"); 
         return {
             "status": "success",
@@ -162,8 +155,14 @@ const initialData = (inputPt, roadStrings, stationsPts, threshold=0.2) => {
                 "splitLineStringsGeoJSON": splitLineStringsGeoJSON,
                 "targetLine": targetLine,
                 "referLine": referLine,
-                "nearestPointA": nearestPointA,
-                "nearestPointB": nearestPointB
+                "nearestPointA": {
+                    "endPt": endPtA,
+                    "endPtMile": nearestPointA
+                },
+                "nearestPointB": {
+                    "endPt": endPtB,
+                    "endPtMile": nearestPointB
+                }
             }
         }
     } else {
@@ -374,12 +373,13 @@ const getDirection = (targetLine, referLine, nearestPointA, nearestPointB) => {
     const maxDistance = 0.2; 
     const step = 0.001; 
     const initialDistance = 0.001; 
-    const referLineCoords = turf.getCoords(referLine);
-    const referLineCoordsA = turf.point(referLineCoords[0]);
-    const referLineCoordsB = turf.point(referLineCoords[referLineCoords.length - 1]);
-
     const directions = [0, 90, 180, 270];
+    const mileA = nearestPointA['endPtMile'];
+    const mileB = nearestPointB['endPtMile'];
+    const endPtA = nearestPointA['endPt'];
+    const endPtB = nearestPointB['endPt'];
     let targetDirection;
+    
     const checkTranslation = (direction, distance) => {
         if (distance > maxDistance) {
             targetDirection = undefined;
@@ -403,16 +403,16 @@ const getDirection = (targetLine, referLine, nearestPointA, nearestPointB) => {
 
     let degreeToNorth;
     if (targetDirection === 0 || targetDirection === 180) {
-        const isToNorth = nearestPointA - nearestPointB < 0; 
+        const isToNorth = mileA - mileB < 0; 
         if (isToNorth) {
-            const is90degree = (turf.getCoord(referLineCoordsA)[0] - turf.getCoord(referLineCoordsB)[0]) > 0; 
+            const is90degree = (turf.getCoord(endPtA)[0] - turf.getCoord(endPtB)[0]) > 0; 
             if (is90degree) {
                 degreeToNorth = 90;
             } else {
                 degreeToNorth = 270;
             }
         } else {
-            const is90degree = (turf.getCoord(referLineCoordsB)[0] - turf.getCoord(referLineCoordsA)[0]) > 0; 
+            const is90degree = (turf.getCoord(endPtB)[0] - turf.getCoord(endPtA)[0]) > 0; 
             if (is90degree) {
                 degreeToNorth = 90;
             } else {
@@ -420,16 +420,16 @@ const getDirection = (targetLine, referLine, nearestPointA, nearestPointB) => {
             }
         }
     } else if (targetDirection === 90 || targetDirection === 270) {
-        const isToNorth = nearestPointA - nearestPointB < 0; 
+        const isToNorth = mileA - mileB < 0; 
         if (isToNorth) {
-            const is0degree = (turf.getCoord(referLineCoordsA)[1] - turf.getCoord(referLineCoordsB)[1]) > 0; 
+            const is0degree = (turf.getCoord(endPtA)[1] - turf.getCoord(endPtB)[1]) > 0; 
             if (is0degree) {
                 degreeToNorth = 0;
             } else {
                 degreeToNorth = 180;
             }
         } else {
-            const is0degree = (turf.getCoord(referLineCoordsB)[1] - turf.getCoord(referLineCoordsA)[1]) > 0; 
+            const is0degree = (turf.getCoord(endPtB)[1] - turf.getCoord(endPtA)[1]) > 0; 
             if (is0degree) {
                 degreeToNorth = 0;
             } else {
@@ -796,7 +796,7 @@ router.get('/getMile', (req, res) => {
             const roadAncillaryFacilitiesStrings = dbData.RouteAncillaryFacilities; // Data- Road Ancillary Facilities
             const countyPolygon = dbData.county; // Data- County
             const referObjectDict = {
-                "Route": getLimitObject(inputPt, roadStrings, 4),
+                "Route": getLimitObject(inputPt, splitLineStringsGeoJSON, 4),
                 "RouteAncillaryFacilities": getLimitObject(inputPt, roadAncillaryFacilitiesStrings, 4),
                 "MileStation": getLimitObject(inputPt, stationsPts, 4),
                 "County": getLimitObject(inputPt, countyPolygon, 4)
@@ -807,7 +807,11 @@ router.get('/getMile', (req, res) => {
                 "MileStation": "name",
                 "County": "countyname"
             }
-      
+            
+            referObjectDict['Route'].features.forEach(feature => {
+                console.log(feature.properties);
+            });
+            
             // 2 Spatial Operation
             // 2.1 Intersect
             const Intersect = getIntersectedObject(inputPt, referObjectDict, referColumnDict, ["Route", "RouteAncillaryFacilities", "County"]);
@@ -819,7 +823,7 @@ router.get('/getMile', (req, res) => {
             const Cross = getCrossObject(inputPt, referObjectDict, referColumnDict, []);
 
             // 2.4 Disjoint
-            const Disjoint = getDisjointObject(inputPt, referObjectDict, referColumnDict, ["Route"]);
+            const Disjoint = getDisjointObject(inputPt, referObjectDict, referColumnDict, []);
 
             // 2.5 Equal
             const Equal = getEqualObject(inputPt, referObjectDict, referColumnDict, []);
