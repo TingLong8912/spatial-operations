@@ -609,7 +609,7 @@ const getCountyBoundary = (inputPt, referObjectDict, keysToConsider, threshold, 
             });
 
             if (boundedCounty.length === 2) {
-                result[key] = boundedCounty[0]+ "和" +boundedCounty[1]
+                result[key] = [boundedCounty[0]+ "和" +boundedCounty[1]];
             } else {
                 result[key] = [];
             }
