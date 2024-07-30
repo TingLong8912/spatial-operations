@@ -23,23 +23,24 @@ const getLimitObject = (inputPt, referObject, bufferThreshold) => {
 
 const findTheNearestRoad = (inputPt, bufferedRoadStrings, num = 1) => {
     let nearestRoadList = [];
-    // const roadNameOfinputPt = inputPt.properties.roadname;
+    const roadNameOfinputPt = inputPt.properties.index;
     const roadStringsFeatures = bufferedRoadStrings.features;
 
-    // for (let i = 0; i < roadStringsFeatures.length; i++) {
-    //     const feature = roadStringsFeatures[i];
-    //     if (roadNameOfinputPt !== roadNameOfRoad) return;
-    //     const projectedPoint = turf.nearestPointOnLine(feature, inputPt, { units: "kilometers" });
-    //     const distance = turf.distance(inputPt, projectedPoint);
-    //     const roadId = feature.properties.id;
+    for (let i = 0; i < roadStringsFeatures.length; i++) {
+        if (roadNameOfinputPt !== 'unknown' && roadNameOfinputPt !== roadNameOfRoad) return;
+        
+        const feature = roadStringsFeatures[i];
+        const projectedPoint = turf.nearestPointOnLine(feature, inputPt, { units: "kilometers" });
+        const distance = turf.distance(inputPt, projectedPoint);
+        const roadId = feature.properties.id;
     
-    //     nearestRoadList.push({
-    //         "distance": distance,
-    //         "roadFeature": feature,
-    //         "projectedPoint": projectedPoint, 
-    //         "roadId": roadId
-    //     });
-    // }
+        nearestRoadList.push({
+            "distance": distance,
+            "roadFeature": feature,
+            "projectedPoint": projectedPoint, 
+            "roadId": roadId
+        });
+    }
 
     bufferedRoadStrings.features.forEach(feature => {
         if (roadNameOfinputPt !== roadNameOfRoad) ;
@@ -682,6 +683,7 @@ router.get('/getMile', (req, res) => {
     const inputPtArray = [x, y];
     const floatInputPtArray = inputPtArray.map(function(coord) { return parseFloat(coord); });
     const inputPt = turf.point(floatInputPtArray);
+    inputPt.properties['index'] = "unknown";
 
     // FigureFeature(ReferObject)
     // DB Connection
@@ -705,7 +707,7 @@ router.get('/getMile', (req, res) => {
             const query_MileStations = 'SELECT id, name, index, ST_AsGeoJSON(geom) as geom FROM geospatial_description.milestations';
             const res_MileStations = await client.query(query_MileStations);
 
-            const query_Route = 'SELECT id, roadnum, ST_AsGeoJSON(geom) as geom FROM geospatial_description.HW';
+            const query_Route = 'SELECT id, roadnum, ST_AsGeoJSON(geom) as geom FROM geospatial_description.hw';
             const res_Route = await client.query(query_Route);
 
             const query_RouteAncillaryFacilities = 'SELECT id, roadname, ST_AsGeoJSON(geom) as geom FROM geospatial_description.routeancillaryfacilities';
@@ -727,7 +729,7 @@ router.get('/getMile', (req, res) => {
             };
           
             const countyFeatures = convertToGeoJSON(res_county.rows, 'id', ['countyname']);
-            const mileStationsFeatures = convertToGeoJSON(res_MileStations.rows, 'id', ['name']);
+            const mileStationsFeatures = convertToGeoJSON(res_MileStations.rows, 'id', ['name', 'index']);
             const routeFeatures = convertToGeoJSON(res_Route.rows, 'id', ['roadnum']);
             const routeAncillaryFacilitiesFeatures = convertToGeoJSON(res_RouteAncillaryFacilities.rows, 'id', ['roadname']);
         
