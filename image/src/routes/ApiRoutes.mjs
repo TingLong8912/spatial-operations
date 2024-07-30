@@ -23,11 +23,31 @@ const getLimitObject = (inputPt, referObject, bufferThreshold) => {
 
 const findTheNearestRoad = (inputPt, bufferedRoadStrings, num = 1) => {
     let nearestRoadList = [];
+    // const roadNameOfinputPt = inputPt.properties.roadname;
+    const roadStringsFeatures = bufferedRoadStrings.features;
+
+    // for (let i = 0; i < roadStringsFeatures.length; i++) {
+    //     const feature = roadStringsFeatures[i];
+    //     if (roadNameOfinputPt !== roadNameOfRoad) return;
+    //     const projectedPoint = turf.nearestPointOnLine(feature, inputPt, { units: "kilometers" });
+    //     const distance = turf.distance(inputPt, projectedPoint);
+    //     const roadId = feature.properties.id;
+    
+    //     nearestRoadList.push({
+    //         "distance": distance,
+    //         "roadFeature": feature,
+    //         "projectedPoint": projectedPoint, 
+    //         "roadId": roadId
+    //     });
+    // }
+
     bufferedRoadStrings.features.forEach(feature => {
+        if (roadNameOfinputPt !== roadNameOfRoad) ;
+
         const projectedPoint = turf.nearestPointOnLine(feature, inputPt, { units: "kilometers" });
         const distance = turf.distance(inputPt, projectedPoint);
         const roadId = feature.properties.id;
-
+    
         nearestRoadList.push({
             "distance": distance,
             "roadFeature": feature,
@@ -651,43 +671,6 @@ const convertStringToFloat = (inputString) => {
     return result;
 };
   
-router.get("/", (_, res) => {
-    // DB Connection
-    const client = new pg.Client({
-        user: "TingLong",
-        host: "pdb.sgis.tw",
-        database: "gistl",
-        password: "Acfg27354195",
-        port: "5432",
-    });
-
-    const connectAndQuery = async () => {
-        try {
-            await client.connect();
-            console.log('Connected to PostgreSQL database');
-        
-            const query = 'SELECT id, countyname, ST_AsGeoJSON(geom) as geom FROM geospatial_description.county';
-            const res = await client.query(query);
-            return res.rows;  
-        } catch (err) {
-            console.error('Connection error', err.stack);
-        } finally {
-            await client.end();
-        }
-    };
-    connectAndQuery().then(dbData => {
-        res.status(200).json({ 
-            message: "Hello, world.",
-            data: dbData 
-        });
-    }).catch(err => {
-        res.status(200).json({ 
-            message: "Hello, world.",
-            data: "error" 
-        });
-    });
-});
-
 router.get('/getMile', (req, res) => {
     // Read Data
     // Input(GroundFeature)
@@ -719,13 +702,13 @@ router.get('/getMile', (req, res) => {
             const query_county = 'SELECT id, countyname, ST_AsGeoJSON(geom) as geom FROM geospatial_description.county';
             const res_county = await client.query(query_county);
             
-            const query_MileStations = 'SELECT id, name, ST_AsGeoJSON(geom) as geom FROM geospatial_description.MileStations';
+            const query_MileStations = 'SELECT id, name, index, ST_AsGeoJSON(geom) as geom FROM geospatial_description.milestations';
             const res_MileStations = await client.query(query_MileStations);
 
-            const query_Route = 'SELECT id, roadnum, ST_AsGeoJSON(geom) as geom FROM geospatial_description.Route';
+            const query_Route = 'SELECT id, roadnum, ST_AsGeoJSON(geom) as geom FROM geospatial_description.HW';
             const res_Route = await client.query(query_Route);
 
-            const query_RouteAncillaryFacilities = 'SELECT id, roadname, ST_AsGeoJSON(geom) as geom FROM geospatial_description.RouteAncillaryFacilities';
+            const query_RouteAncillaryFacilities = 'SELECT id, roadname, ST_AsGeoJSON(geom) as geom FROM geospatial_description.routeancillaryfacilities';
             const res_RouteAncillaryFacilities = await client.query(query_RouteAncillaryFacilities);
 
             const convertToGeoJSON = (rows, idField, additionalFields) => {
