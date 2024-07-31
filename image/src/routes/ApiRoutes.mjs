@@ -22,14 +22,18 @@ const getLimitObject = (inputPt, referObject, bufferThreshold) => {
 };
 
 const findTheNearestRoad = (inputPt, bufferedRoadStrings, num = 1) => {
+    console.log("findTheNearestRoad...");
     let nearestRoadList = [];
     const roadNameOfinputPt = inputPt.properties.index;
     const roadStringsFeatures = bufferedRoadStrings.features;
 
     for (let i = 0; i < roadStringsFeatures.length; i++) {
+        const feature = roadStringsFeatures[i];
+        const roadNameOfRoad = feature.properties.roadnum;
+
+        console.log(roadNameOfinputPt, roadNameOfRoad);
         if (roadNameOfinputPt !== 'unknown' && roadNameOfinputPt !== roadNameOfRoad) return;
         
-        const feature = roadStringsFeatures[i];
         const projectedPoint = turf.nearestPointOnLine(feature, inputPt, { units: "kilometers" });
         const distance = turf.distance(inputPt, projectedPoint);
         const roadId = feature.properties.id;
@@ -41,21 +45,6 @@ const findTheNearestRoad = (inputPt, bufferedRoadStrings, num = 1) => {
             "roadId": roadId
         });
     }
-
-    bufferedRoadStrings.features.forEach(feature => {
-        if (roadNameOfinputPt !== roadNameOfRoad) ;
-
-        const projectedPoint = turf.nearestPointOnLine(feature, inputPt, { units: "kilometers" });
-        const distance = turf.distance(inputPt, projectedPoint);
-        const roadId = feature.properties.id;
-    
-        nearestRoadList.push({
-            "distance": distance,
-            "roadFeature": feature,
-            "projectedPoint": projectedPoint, 
-            "roadId": roadId
-        });
-    });
 
     // 按距離排序
     nearestRoadList.sort((a, b) => a.distance - b.distance);
@@ -77,6 +66,7 @@ const findTheNearestRoad = (inputPt, bufferedRoadStrings, num = 1) => {
         if (topNNearestPoints.length == num) break;
     };
 
+    console.log("findTheNearestRoad done!");
     return topNNearestPoints;
 };
 
@@ -103,6 +93,7 @@ const initialData = (inputPt, roadStrings, stationsPts, threshold=0.2) => {
         // 每一個樁號點要映射到兩個(雙向)道路
         bufferedStationsPts.features.forEach(feature => {
             const stationPt = turf.point(feature.geometry.coordinates);
+            stationPt.properties['index'] = feature.properties.index;
             const mile = convertStringToFloat(feature.properties.name);
             
             // Find the nearest road
@@ -877,7 +868,7 @@ router.get('/getMile', (req, res) => {
     }).catch(err => {
         res.status(200).json({ 
             message: "Hello, world.",
-            data: "error" 
+            data: err 
         });
     });
 });
