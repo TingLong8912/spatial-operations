@@ -769,6 +769,7 @@ router.get('/getMile', (req, res) => {
             // 1 Proprocessing Data
             const { projectedInputPt, splitLineStringsGeoJSON, targetLine, referLine, nearestPointA, nearestPointB } = initialDataJson.data;
             if (!targetLine) res.status(204).json(initialDataJson);
+            inputPt.properties['index'] = targetLine.properties.roadnum;
             const roadAncillaryFacilitiesStrings = dbData.RouteAncillaryFacilities; // Data- Road Ancillary Facilities
             const countyPolygon = dbData.county; // Data- County
             const referObjectDict = {
@@ -847,7 +848,7 @@ router.get('/getMile', (req, res) => {
             inputPt.properties = {"Name": "Input_Point", "Mile": DistanceForRoad, "Direction": DirectionForRoad};
             targetLine.properties['Name'] = "Target_Road";
             referLine.properties["Name"] = "Refer_Road";
-            SpatialOperationResult.Within["Route"] = [ "國道一號" ];
+            SpatialOperationResult.Within["Route"] = [ inputPt.properties['index'] ];
             const startPt = targetLine.properties.startPt;
             const endPt = targetLine.properties.endPt;
 
