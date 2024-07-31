@@ -113,6 +113,7 @@ const initialData = (inputPt, roadStrings, stationsPts, threshold=0.2) => {
         // 迭代每一條道路，找到落在該道路的樁號點並切割
         bufferedRoadStrings.features.forEach(feature => {
             const roadId = feature.properties.id;
+            const roadnum = feature.properties.roadnum;
 
             for (let key in allTop2NearestPointOnRoad) {
                 if (allTop2NearestPointOnRoad.hasOwnProperty(key)) {
@@ -131,6 +132,7 @@ const initialData = (inputPt, roadStrings, stationsPts, threshold=0.2) => {
                             split.properties = {
                                 "startPt": startPoint, 
                                 "endPt": endPoint,
+                                "roadnum": roadnum,
                                 "id": roadId // to keep track of which LineString it came from
                             };
                             
