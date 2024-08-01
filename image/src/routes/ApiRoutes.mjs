@@ -698,7 +698,13 @@ router.get('/getMile', (req, res) => {
             const query_MileStations = 'SELECT id, name, index, ST_AsGeoJSON(geom) as geom FROM geospatial_description.milestations';
             const res_MileStations = await client.query(query_MileStations);
 
-            const query_Route = 'SELECT id, roadnum, ST_AsGeoJSON(geom) as geom FROM geospatial_description.hw';
+            const query_Route = `
+                SELECT id, roadnum, ST_AsGeoJSON(geom) as geom FROM geospatial_description.hw
+                UNION ALL
+                SELECT id, roadnum, ST_AsGeoJSON(geom) as geom FROM geospatial_description.1w
+                UNION ALL
+                SELECT id, roadnum, ST_AsGeoJSON(geom) as geom FROM geospatial_description.1e
+            `;
             const res_Route = await client.query(query_Route);
 
             const query_RouteAncillaryFacilities = 'SELECT id, roadnum, roadname, ST_AsGeoJSON(geom) as geom FROM geospatial_description.hu';
@@ -738,7 +744,7 @@ router.get('/getMile', (req, res) => {
                 type: 'FeatureCollection',
                 features: routeFeatures
             };
-        
+
             const routeAncillaryFacilitiesGeoJSON = {
                 type: 'FeatureCollection',
                 features: routeAncillaryFacilitiesFeatures
@@ -774,7 +780,7 @@ router.get('/getMile', (req, res) => {
 
             var roadAncillaryFacilitiesStrings = dbData.RouteAncillaryFacilities; // Data- Road Ancillary Facilities
             const countyPolygon = dbData.county; // Data- County
-            
+
             // Filter road ancillary facilities by roadnum
             const filteredFeatures = roadAncillaryFacilitiesStrings.features.filter(feature => {
                 return feature.properties.roadnum === roadnum;
