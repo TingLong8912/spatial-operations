@@ -701,7 +701,7 @@ router.get('/getMile', (req, res) => {
             const query_Route = 'SELECT id, roadnum, ST_AsGeoJSON(geom) as geom FROM geospatial_description.hw';
             const res_Route = await client.query(query_Route);
 
-            const query_RouteAncillaryFacilities = 'SELECT id, roadname, ST_AsGeoJSON(geom) as geom FROM geospatial_description.routeancillaryfacilities';
+            const query_RouteAncillaryFacilities = 'SELECT id, roadnum, roadname, ST_AsGeoJSON(geom) as geom FROM geospatial_description.hu';
             const res_RouteAncillaryFacilities = await client.query(query_RouteAncillaryFacilities);
 
             const convertToGeoJSON = (rows, idField, additionalFields) => {
@@ -722,7 +722,7 @@ router.get('/getMile', (req, res) => {
             const countyFeatures = convertToGeoJSON(res_county.rows, 'id', ['countyname']);
             const mileStationsFeatures = convertToGeoJSON(res_MileStations.rows, 'id', ['name', 'index']);
             const routeFeatures = convertToGeoJSON(res_Route.rows, 'id', ['roadnum']);
-            const routeAncillaryFacilitiesFeatures = convertToGeoJSON(res_RouteAncillaryFacilities.rows, 'id', ['roadname']);
+            const routeAncillaryFacilitiesFeatures = convertToGeoJSON(res_RouteAncillaryFacilities.rows, 'id', ['roadnum', 'roadname']);
         
             const countyGeoJSON = {
                 type: 'FeatureCollection',
@@ -769,9 +769,21 @@ router.get('/getMile', (req, res) => {
             // 1 Proprocessing Data
             const { projectedInputPt, splitLineStringsGeoJSON, targetLine, referLine, nearestPointA, nearestPointB } = initialDataJson.data;
             if (!targetLine) res.status(204).json(initialDataJson);
-    
-            const roadAncillaryFacilitiesStrings = dbData.RouteAncillaryFacilities; // Data- Road Ancillary Facilities
+            const roadnum = targetLine.properties.roadnum;
+            console.log("roadnum: ", roadnum);
+
+            var roadAncillaryFacilitiesStrings = dbData.RouteAncillaryFacilities; // Data- Road Ancillary Facilities
             const countyPolygon = dbData.county; // Data- County
+            
+            // Filter road ancillary facilities by roadnum
+            const filteredFeatures = roadAncillaryFacilitiesStrings.features.filter(feature => {
+                return feature.properties.roadnum === roadnum;
+            });
+            roadAncillaryFacilitiesStrings = {
+                type: 'FeatureCollection',
+                features: filteredFeatures
+            };
+
             const referObjectDict = {
                 "Route": getLimitObject(inputPt, splitLineStringsGeoJSON, 4),
                 "RouteAncillaryFacilities": getLimitObject(inputPt, roadAncillaryFacilitiesStrings, 4),
