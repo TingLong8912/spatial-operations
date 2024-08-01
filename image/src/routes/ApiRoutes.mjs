@@ -31,7 +31,6 @@ const findTheNearestRoad = (inputPt, bufferedRoadStrings, num = 1) => {
         const feature = roadStringsFeatures[i];
         const roadNameOfRoad = feature.properties.roadnum;
 
-        console.log(roadNameOfinputPt, roadNameOfRoad);
         if (roadNameOfinputPt !== 'unknown' && roadNameOfinputPt !== roadNameOfRoad) return;
         
         const projectedPoint = turf.nearestPointOnLine(feature, inputPt, { units: "kilometers" });
@@ -147,7 +146,6 @@ const initialData = (inputPt, roadStrings, stationsPts, threshold=0.2) => {
 
         // 2 Get the Needing Geometry: targetline, referLine and the two endpoints mile of targeline
         const top2NearestSplitRoad = findTheNearestRoad(inputPt, splitLineStringsGeoJSON, 2);
-        console.log("top2NearestSplitRoad: ", top2NearestSplitRoad);
         const targetLine = top2NearestSplitRoad[0]['roadFeature'];
         const referLine = top2NearestSplitRoad[1]['roadFeature'];
 
@@ -771,7 +769,7 @@ router.get('/getMile', (req, res) => {
             // 1 Proprocessing Data
             const { projectedInputPt, splitLineStringsGeoJSON, targetLine, referLine, nearestPointA, nearestPointB } = initialDataJson.data;
             if (!targetLine) res.status(204).json(initialDataJson);
-            inputPt.properties['index'] = targetLine.properties.roadnum;
+    
             const roadAncillaryFacilitiesStrings = dbData.RouteAncillaryFacilities; // Data- Road Ancillary Facilities
             const countyPolygon = dbData.county; // Data- County
             const referObjectDict = {
@@ -786,10 +784,6 @@ router.get('/getMile', (req, res) => {
                 "MileStation": "name",
                 "County": "countyname"
             }
-            
-            referObjectDict['Route'].features.forEach(feature => {
-                console.log(feature.properties);
-            });
             
             // 2 Spatial Operation
             // 2.1 Intersect
@@ -847,7 +841,12 @@ router.get('/getMile', (req, res) => {
 
             // 3 Output Result
             // 3.1 Result Format
-            inputPt.properties = {"Name": "Input_Point", "Mile": DistanceForRoad, "Direction": DirectionForRoad};
+            inputPt.properties = {
+                "Name": "Input_Point", 
+                "Mile": DistanceForRoad, 
+                "Direction": DirectionForRoad,
+                "index": targetLine.properties.roadnum
+            };
             targetLine.properties['Name'] = "Target_Road";
             referLine.properties["Name"] = "Refer_Road";
             SpatialOperationResult.Within["Route"] = [ inputPt.properties['index'] ];
