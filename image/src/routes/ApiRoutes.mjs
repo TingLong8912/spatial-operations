@@ -887,7 +887,8 @@ router.get('/getMile', (req, res) => {
         }
     }).catch(err => {
         res.status(200).json({ 
-            message: "Hello, world.",
+            "status": "error",
+            message: "unexpected error",
             data: err 
         });
     });
