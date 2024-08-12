@@ -162,6 +162,7 @@ const initialData = (inputPt, roadStrings, stationsPts, threshold=0.2) => {
         console.log("initialData successed"); 
         return {
             "status": "success",
+            "message": '',
             "data": {
                 "projectedInputPt": projectedInputPt,
                 "splitLineStringsGeoJSON": splitLineStringsGeoJSON,
@@ -181,7 +182,8 @@ const initialData = (inputPt, roadStrings, stationsPts, threshold=0.2) => {
         console.log("initialData failed"); 
         return {
             "status": "error",
-            "message": "The input point is too far from the road."
+            "message": "The input point is too far from the road.",
+            "data": {}
         }
     }
 };
