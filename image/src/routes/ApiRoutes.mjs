@@ -701,9 +701,9 @@ router.get('/getMile', (req, res) => {
             const query_Route = `
                 SELECT id, roadnum, ST_AsGeoJSON(geom) as geom FROM geospatial_description.hw
                 UNION ALL
-                SELECT id, roadnum, ST_AsGeoJSON(geom) as geom FROM geospatial_description.1w
+                SELECT id, roadnum, ST_AsGeoJSON(geom) as geom FROM geospatial_description."1w"
                 UNION ALL
-                SELECT id, roadnum, ST_AsGeoJSON(geom) as geom FROM geospatial_description.1e
+                SELECT id, roadnum, ST_AsGeoJSON(geom) as geom FROM geospatial_description."1e"
             `;
             const res_Route = await client.query(query_Route);
 
