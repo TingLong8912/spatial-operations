@@ -590,12 +590,24 @@ const getBinaryDistanceObjectProbability = (inputPt, referObjectDict, referColum
                     tempResult.push(keys[i]);
                 }
             }
+
+            //output result
             if (tempResult.length === 2) {
-                resultDistanceMiddle[key] = tempResult;
+                resultDistanceMiddle[key] = tempResult.map(name => {
+                    return {
+                        name: name,
+                        feature: referObjectDict[key].features.find(feature => feature.properties[objectNameCol] === name)
+                    };
+                });
                 resultDistanceNear[key] = [];
             } else if (tempResult.length === 1) {
                 resultDistanceMiddle[key] = [];
-                resultDistanceNear[key] = tempResult;
+                resultDistanceNear[key] = tempResult.map(name => {
+                    return {
+                        name: name,
+                        feature: referObjectDict[key].features.find(feature => feature.properties[objectNameCol] === name)
+                    };
+                });
             } else {
                 resultDistanceMiddle[key] = [];
                 resultDistanceNear[key] = [];
