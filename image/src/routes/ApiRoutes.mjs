@@ -188,6 +188,30 @@ const initialData = (inputPt, roadStrings, stationsPts, threshold=0.2) => {
     }
 };
 
+// 1.3 Find the nearest point according to roadStrings
+const findNearestPointOnMultiLineString = (multiLineString, points) => {
+    let nearestPointOverall = null;
+    let minDistance = Infinity;
+
+    points.features.forEach(point => {
+        // Find the nearest point on the MultiLineString
+        const nearestPointOnLine = turf.nearestPointOnLine(multiLineString, point);
+        const distance = nearestPointOnLine.properties.dist; // Distance in meters
+
+        // Check if it's the closest point so far
+        if (distance < minDistance) {
+            minDistance = distance;
+            nearestPointOverall = {
+                point: point, // The original input point
+                nearestPointOnLine: nearestPointOnLine, // The nearest point on the line
+                distance: distance // The distance in meters
+            };
+        }
+    });
+
+    return nearestPointOverall;
+};
+
 // 2 Spatial Operation
 // 2.1 Intersect
 const getIntersectedObject = (inputPt, referObjectDict, referColumnDict, keysToConsider) => {
@@ -593,11 +617,21 @@ const getBinaryDistanceObjectProbability = (inputPt, referObjectDict, referColum
 
             //output result
             if (tempResult.length === 2) {
-                resultDistanceMiddle[key] = tempResult;
+                resultDistanceMiddle[key] = tempResult.map(name => {
+                    return {
+                        name: name,
+                        feature: referObjectDict[key].features.find(feature => feature.properties[objectNameCol] === name)
+                    };
+                });
                 resultDistanceNear[key] = [];
             } else if (tempResult.length === 1) {
                 resultDistanceMiddle[key] = [];
-                resultDistanceNear[key] = tempResult;
+                resultDistanceNear[key] = tempResult.map(name => {
+                    return {
+                        name: name,
+                        feature: referObjectDict[key].features.find(feature => feature.properties[objectNameCol] === name)
+                    };
+                });
             } else {
                 resultDistanceMiddle[key] = [];
                 resultDistanceNear[key] = [];
@@ -650,6 +684,54 @@ const getDistance = (projectedInputPt, targetLine) => {
     const inputPtMile = parseFloat((startPtMile + splitLength).toFixed(3)).toString()+"K";
 
     return { "MileStations": [inputPtMile] }
+};
+
+// 2.13 Cross(for road)
+const getCross = (inputPt, referObjectDict, referColumnDict, keysToConsider, DirectionForRoad) => {
+    console.log("running getCross...");
+
+    if (!DirectionForRoad) return {};
+    const { DistanceNear } = getBinaryDistanceObjectProbability(inputPt, referObjectDict, referColumnDict, keysToConsider);
+
+    const resultCross = {};
+    const resultInFront = {};
+    
+    keysToConsider.forEach(key => {
+        if (DistanceNear[key].length > 0) {
+            if (!resultInFront[key]) resultInFront[key] = [];
+            if (!resultCross[key]) resultCross[key] = [];
+
+            const nearestObject = DistanceNear[key][0]; // Assuming the first object is the nearest
+            const nearestFeature = nearestObject.feature; // GeoJSON feature of the nearest object
+
+            // Find the station point (or mile marker) of the nearest object
+            const mileStations = referObjectDict["MileStation"];
+            const nearestStation = findNearestPointOnMultiLineString(nearestFeature, mileStations);
+            const referObjectMile = convertStringToFloat(nearestStation["point"]["properties"]["name"]);
+            
+            const nearestStationofInputPt = turf.nearestPoint(inputPt, mileStations);
+            const inputMile = convertStringToFloat(nearestStationofInputPt["properties"]["name"]);
+            
+            const direction = DirectionForRoad["Route"][0];
+
+            // Compare mile positions to determine spatial relation
+            if (direction === "N") {
+                if (inputMile > referObjectMile) {
+                    resultInFront[key].push(nearestFeature.properties.roadname);
+                } else if (inputMile > referObjectMile) {
+                    resultCross[key].push(nearestFeature.properties.roadname);
+                } else { return {} };
+            } else if (direction === "S") {
+                if (inputMile < referObjectMile) {
+                    resultInFront[key].push(nearestFeature.properties.roadname);
+                } else if (inputMile > referObjectMile) {
+                    resultCross[key].push(nearestFeature.properties.roadname);
+                } else { return {} };
+            };
+        }
+    });
+    
+    return { Cross: resultCross, InFront: resultInFront };
 };
 
 // 3 Other Functions
@@ -844,7 +926,10 @@ router.get('/getMile', (req, res) => {
 
             // 2.12 Distance/Mile(for road)
             const DistanceForRoad = getDistance(projectedInputPt, targetLine);
-    
+            
+            // 2.13 Cross(for road)
+            const CrossForRoad = getCross(projectedInputPt, referObjectDict, referColumnDict, ["RouteAncillaryFacilities"], DirectionForRoad);
+
             const SpatialOperationResult = {
                 "Intersect": Intersect,
                 "Contain": Contain,
@@ -858,7 +943,9 @@ router.get('/getMile', (req, res) => {
                 "DistanceMiddle": DistanceMiddle,
                 "DistanceNear": DistanceNear,
                 "BoundaryForCounty": Boundary,
-                "DistanceForRoad": DistanceForRoad
+                "DistanceForRoad": DistanceForRoad,
+                "CrossForRoad": CrossForRoad["Cross"],
+                "InFrontForRoad": CrossForRoad["InFront"]
             }
 
             // 3 Output Result
