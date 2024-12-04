@@ -617,24 +617,42 @@ const getBinaryDistanceObjectProbability = (inputPt, referObjectDict, referColum
 
             //output result
             if (tempResult.length === 2) {
-                resultDistanceMiddle[key] = tempResult.map(name => {
-                    return {
-                        name: name,
-                        feature: referObjectDict[key].features.find(feature => feature.properties[objectNameCol] === name)
-                    };
-                });
-                resultDistanceNear[key] = [];
+                resultDistanceMiddle[key] = {
+                    features: tempResult.map(name => {
+                        return {
+                            name: name,
+                            feature: referObjectDict[key].features.find(feature => feature.properties[objectNameCol] === name)
+                        };
+                    }),
+                    names: tempResult
+                };
+                resultDistanceNear[key] = {
+                    features: [],
+                    names: []
+                };
             } else if (tempResult.length === 1) {
-                resultDistanceMiddle[key] = [];
-                resultDistanceNear[key] = tempResult.map(name => {
-                    return {
-                        name: name,
-                        feature: referObjectDict[key].features.find(feature => feature.properties[objectNameCol] === name)
-                    };
-                });
+                resultDistanceMiddle[key] = {
+                    features: [],
+                    names: []
+                };
+                resultDistanceNear[key] = {
+                    features: tempResult.map(name => {
+                        return {
+                            name: name,
+                            feature: referObjectDict[key].features.find(feature => feature.properties[objectNameCol] === name)
+                        };
+                    }),
+                    names: tempResult
+                };
             } else {
-                resultDistanceMiddle[key] = [];
-                resultDistanceNear[key] = [];
+                resultDistanceMiddle[key] = {
+                    features: [],
+                    names: []
+                };
+                resultDistanceNear[key] = {
+                    features: [],
+                    names: []
+                };
             }
         }
     });
@@ -692,16 +710,17 @@ const getCross = (inputPt, referObjectDict, referColumnDict, keysToConsider, Dir
 
     if (!DirectionForRoad) return {};
     const { DistanceNear } = getBinaryDistanceObjectProbability(inputPt, referObjectDict, referColumnDict, keysToConsider);
+    const DistanceNearFeatures = DistanceNear['features'];
 
     const resultCross = {};
     const resultInFront = {};
     
     keysToConsider.forEach(key => {
-        if (DistanceNear[key].length > 0) {
+        if (DistanceNearFeatures[key].length > 0) {
             if (!resultInFront[key]) resultInFront[key] = [];
             if (!resultCross[key]) resultCross[key] = [];
 
-            const nearestObject = DistanceNear[key][0]; // Assuming the first object is the nearest
+            const nearestObject = DistanceNearFeatures[key][0]; // Assuming the first object is the nearest
             const nearestFeature = nearestObject.feature; // GeoJSON feature of the nearest object
 
             // Find the station point (or mile marker) of the nearest object
@@ -940,8 +959,8 @@ router.get('/getMile', (req, res) => {
                 "Touch": Touch,
                 "Within": Within,
                 "DirectionForRoad": DirectionForRoad,
-                "DistanceMiddle": DistanceMiddle,
-                "DistanceNear": DistanceNear,
+                "DistanceMiddle": DistanceMiddle['names'],
+                "DistanceNear": DistanceNear['names'],
                 "BoundaryForCounty": Boundary,
                 "DistanceForRoad": DistanceForRoad,
                 "CrossForRoad": CrossForRoad["Cross"],
