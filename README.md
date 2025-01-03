@@ -8,6 +8,8 @@ This API allows input of a single point and, based on four reference spatial obj
 
 You may append the `x=[longitude]&y=[latitude]` as a GET parameter to access the API. 
 
+Example Request
+
 ```http
 GET https://getroadmile.sgis.tw/api/getMile?x=121.5710216096096&y=25.071002700355304
 ```
@@ -19,7 +21,9 @@ GET https://getroadmile.sgis.tw/api/getMile?x=121.5710216096096&y=25.07100270035
 
 ## Responses
 
-Return a JSON response in the following format:
+### Success Response
+* Status Code: 200 OK
+* Return a JSON response in the following format:
 
 ```javascript
 {
@@ -31,7 +35,7 @@ Return a JSON response in the following format:
 }
 ```
 
-The `status` field indicates the status of the API, while the `data` field is subdivided into `SpatialOperation` which represents the results of spatial operations, and `Geometry` both recorded as dictionaries.
+The `data` field is subdivided into `SpatialOperation` which represents the results of spatial operations, and `Geometry` both recorded as dictionaries.
 
 In the dictionary recorded under `SpatialOperation` the first level records spatial relationships, the second level records the reference spatial objects, and the third level records the objects that have spatial relationships with the input point. If empty, it indicates that there are no relevant spatial objects that have a spatial relationship with the input point.
 
@@ -50,3 +54,23 @@ Here is an example of one of the spatial relationships:
 Under the `Geometry` field, the first level records `totalFeatureCollection`, the second level records five spatial objects are recorded, including the input point, the road the input point maps to, another road the input point maps to, and the mileage marker points before and after the input point.
 
 You can access the `totalFeatureCollection` field under `Geometry` to retrieve the GeoJSON of the five spatial objects. This API wraps them into a FeatureCollection geometry type.
+
+### No Content Response
+* Status Code: 204 No Content
+* Description: No matching data or road features found for the given coordinates.
+
+### Error Responses
+* Status Code: 400 Bad Request
+* Description: Missing or invalid query parameters.
+* Example:
+
+```javascript
+{
+  "status": "error",
+  "message": "Both 'x' and 'y' coordinates are required."
+}
+```
+
+### Internal Server Error
+* Status Code: 500
+* Description: Unexpected server error.

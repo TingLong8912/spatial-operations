@@ -972,7 +972,6 @@ router.get('/getMile', (req, res) => {
             const endPt = targetLine.properties.endPt;
 
             const apiResult = {
-                "status": "success",
                 "data": {
                     "SpatialOperation": SpatialOperationResult,
                     "Geometry": {
@@ -983,11 +982,10 @@ router.get('/getMile', (req, res) => {
 
             res.status(200).json(apiResult);
         } else {
-            res.status(200).json(initialDataJson);
+            res.status(204).json(initialDataJson);
         }
     }).catch(err => {
-        res.status(200).json({ 
-            "status": "error",
+        res.status(500).json({ 
             message: "unexpected error",
             data: err 
         });
