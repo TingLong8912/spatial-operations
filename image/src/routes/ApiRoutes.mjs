@@ -981,8 +981,8 @@ router.get('/getMile', (req, res) => {
             };
 
             res.status(200).json(apiResult);
-        } else {
-            res.status(204).json(initialDataJson);
+        } else { // The point is too far from roads
+            res.status(400).json(initialDataJson);
         }
     }).catch(err => {
         res.status(500).json({ 

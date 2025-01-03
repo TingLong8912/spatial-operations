@@ -54,11 +54,10 @@ Under the `Geometry` field, the first level records `totalFeatureCollection`, th
 
 You can access the `totalFeatureCollection` field under `Geometry` to retrieve the GeoJSON of the five spatial objects. This API wraps them into a FeatureCollection geometry type.
 
-### No Content Response(204)
-* Description: No matching data or road features found for the given coordinates.
-
 ### Error Responses(400)
-* Description: Missing or invalid query parameters.
+* Description: 
+    - Missing or invalid query parameters.
+    - No matching data or road features found for the given coordinates
 * Example:
 
 ```javascript
