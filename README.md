@@ -21,8 +21,7 @@ GET https://getroadmile.sgis.tw/api/getMile?x=121.5710216096096&y=25.07100270035
 
 ## Responses
 
-### Success Response
-* Status Code: 200 OK
+### Success Response(200)
 * Return a JSON response in the following format:
 
 ```javascript
@@ -55,12 +54,10 @@ Under the `Geometry` field, the first level records `totalFeatureCollection`, th
 
 You can access the `totalFeatureCollection` field under `Geometry` to retrieve the GeoJSON of the five spatial objects. This API wraps them into a FeatureCollection geometry type.
 
-### No Content Response
-* Status Code: 204 No Content
+### No Content Response(204)
 * Description: No matching data or road features found for the given coordinates.
 
-### Error Responses
-* Status Code: 400 Bad Request
+### Error Responses(400)
 * Description: Missing or invalid query parameters.
 * Example:
 
@@ -71,6 +68,5 @@ You can access the `totalFeatureCollection` field under `Geometry` to retrieve t
 }
 ```
 
-### Internal Server Error
-* Status Code: 500
+### Internal Server Error(500)
 * Description: Unexpected server error.
