@@ -70,3 +70,8 @@ You can access the `totalFeatureCollection` field under `Geometry` to retrieve t
 
 ### Internal Server Error(500)
 * Description: Unexpected server error.
+
+## Related Projects
+1. LocaDescriber-ontology(https://gitops.tw/Nolonger2000/geospatial-description-ontology.git)
+2. LocaDescriber-api(https://gitops.tw/Nolonger2000/geospatial-description-ontology-full.git)
+3. LocaDescriber-website(https://gitops.tw/Nolonger2000/locadescriber.git)
