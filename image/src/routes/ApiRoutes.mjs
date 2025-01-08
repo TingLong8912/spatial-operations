@@ -852,7 +852,7 @@ router.get('/getMile', (req, res) => {
                 RouteAncillaryFacilities: routeAncillaryFacilitiesGeoJSON
             };
         } catch (err) {
-            return error
+            return err
         } finally {
             await client.end();
         }
