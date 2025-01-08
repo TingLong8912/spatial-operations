@@ -2,7 +2,7 @@ import { Router } from 'express';
 import * as turf from '@turf/turf';
 import { features } from 'process';
 import { copyFileSync, promises as fs } from 'fs';
-import pg from 'pg';
+import { Pool } from 'pg';
 
 const router = Router();
 
@@ -773,37 +773,36 @@ router.get('/getMile', (req, res) => {
 
     // FigureFeature(ReferObject)
     // DB Connection
-    const client = new pg.Client({
+    const pool = new Pool({
         user: "TingLong",
         host: "pdb.sgis.tw",
         database: "gistl",
         password: "Acfg27354195",
-        port: "5432",
+        port: 5432,
     });
     
     // DB Query
     const connectAndQuery = async () => {
-        try {
-            await client.connect();
-            return ('Connected to PostgreSQL database');
-        
-            const query_county = 'SELECT id, countyname, ST_AsGeoJSON(geom) as geom FROM geospatial_description.county';
-            const res_county = await client.query(query_county);
+        try {        
+            const res_county = await pool.query(`
+                SELECT id, countyname, ST_AsGeoJSON(geom) as geom FROM geospatial_description.county
+            `);
             
-            const query_MileStations = 'SELECT id, name, index, ST_AsGeoJSON(geom) as geom FROM geospatial_description.milestations';
-            const res_MileStations = await client.query(query_MileStations);
-
-            const query_Route = `
+            const res_MileStations = await pool.query(`
+                SELECT id, name, index, ST_AsGeoJSON(geom) as geom FROM geospatial_description.milestations
+            `);
+   
+            const res_Route = await pool.query(`
                 SELECT id, roadnum, ST_AsGeoJSON(geom) as geom FROM geospatial_description.hw
                 UNION ALL
                 SELECT id, roadnum, ST_AsGeoJSON(geom) as geom FROM geospatial_description."1w"
                 UNION ALL
                 SELECT id, roadnum, ST_AsGeoJSON(geom) as geom FROM geospatial_description."1e"
-            `;
-            const res_Route = await client.query(query_Route);
-
-            const query_RouteAncillaryFacilities = 'SELECT id, roadnum, roadname, ST_AsGeoJSON(geom) as geom FROM geospatial_description.hu';
-            const res_RouteAncillaryFacilities = await client.query(query_RouteAncillaryFacilities);
+            `);
+            
+            const res_RouteAncillaryFacilities = await pool.query(`
+                SELECT id, roadnum, roadname, ST_AsGeoJSON(geom) as geom FROM geospatial_description.hu
+            `);
 
             const convertToGeoJSON = (rows, idField, additionalFields) => {
                 return rows.map(row => {
@@ -853,8 +852,6 @@ router.get('/getMile', (req, res) => {
             };
         } catch (err) {
             return err
-        } finally {
-            await client.end();
         }
     };
 
