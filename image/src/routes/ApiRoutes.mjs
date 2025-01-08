@@ -2,7 +2,9 @@ import { Router } from 'express';
 import * as turf from '@turf/turf';
 import { features } from 'process';
 import { copyFileSync, promises as fs } from 'fs';
-import { Pool } from 'pg';
+import pkg from 'pg';
+
+const { Pool } = pkg;
 
 const router = Router();
 
