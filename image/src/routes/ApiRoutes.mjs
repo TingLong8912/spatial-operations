@@ -785,7 +785,7 @@ router.get('/getMile', (req, res) => {
     const connectAndQuery = async () => {
         try {
             await client.connect();
-            console.log('Connected to PostgreSQL database');
+            return ('Connected to PostgreSQL database');
         
             const query_county = 'SELECT id, countyname, ST_AsGeoJSON(geom) as geom FROM geospatial_description.county';
             const res_county = await client.query(query_county);
