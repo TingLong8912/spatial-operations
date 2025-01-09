@@ -649,7 +649,7 @@ const getBinaryDistanceObjectProbability = (inputPt, referObjectDict, referColum
             }
         }
     });
-
+    console.log({ "DistanceMiddle": resultDistanceMiddle, "DistanceNear": resultDistanceNear})
     return { "DistanceMiddle": resultDistanceMiddle, "DistanceNear": resultDistanceNear};
 };
 
@@ -930,14 +930,14 @@ router.get('/getMile', (req, res) => {
 
             // 2.11 Boundary
             const thresholdBoundary = 1; // units: km
-            const Boundary = getCountyBoundary(inputPt, referObjectDict, ["County"], thresholdBoundary);
+            //const Boundary = getCountyBoundary(inputPt, referObjectDict, ["County"], thresholdBoundary); // 有問題！！！
 
             // 2.12 Distance/Mile(for road)
             const DistanceForRoad = getDistance(projectedInputPt, targetLine);
             
             // 2.13 Cross(for road)
             const CrossForRoad = getCross(projectedInputPt, referObjectDict, referColumnDict, ["RouteAncillaryFacilities"], DirectionForRoad);
-
+            
             const SpatialOperationResult = {
                 "Intersect": Intersect,
                 "Contain": Contain,
@@ -950,7 +950,7 @@ router.get('/getMile', (req, res) => {
                 "DirectionForRoad": DirectionForRoad,
                 "DistanceMiddle": DistanceMiddle['names'],
                 "DistanceNear": DistanceNear['names'],
-                "BoundaryForCounty": Boundary,
+                // "BoundaryForCounty": Boundary,
                 "DistanceForRoad": DistanceForRoad,
                 "CrossForRoad": CrossForRoad["Cross"],
                 "InFrontForRoad": CrossForRoad["InFront"]
