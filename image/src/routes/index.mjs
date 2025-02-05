@@ -8,6 +8,6 @@ const router = Router();
 
 /* ROUTES */
 router.use('/api', ApiRoutes);
-router.use('spatial-operation', SpatialRoutes);
+router.use('/spatial-operation', SpatialRoutes);
 
 export { router };
