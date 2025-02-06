@@ -64,6 +64,11 @@ router.post('/within', (req, res) => {
         const geo1 = turf.featureCollection(geometry1);
         const geo2 = turf.featureCollection(geometry2);
 
+        res.json({
+            geo1: geo1,
+            geo2: geo2
+        });
+
         const results = {};
         results.within = turf.booleanWithin(geo1, geo2);
    
