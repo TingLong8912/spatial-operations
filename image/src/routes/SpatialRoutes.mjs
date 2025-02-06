@@ -55,9 +55,9 @@ router.post('/select', (req, res) => {
 
 router.post('/within', (req, res) => {
     try {
-        const { geometry1, geometry2, relations } = req.body;
+        const { geometry1, geometry2 } = req.body;
 
-        if (!geometry1 || !geometry2 || !Array.isArray(relations) || relations.length === 0) {
+        if (!geometry1 || !geometry2 ) {
             return res.status(400).json({ error: 'Missing or invalid parameters' });
         }
 
