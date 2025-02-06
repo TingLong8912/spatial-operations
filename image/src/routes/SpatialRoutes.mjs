@@ -62,6 +62,7 @@ router.post('/within', (req, res) => {
         }
 
         const geo1 = turf.feature(geometry1);
+        res.json({ geo1: geo1});
         const geo2 = turf.feature(geometry2);
 
         const results = {};
