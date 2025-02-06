@@ -61,8 +61,8 @@ router.post('/within', (req, res) => {
             return res.status(400).json({ error: 'Missing or invalid parameters' });
         }
 
-        const geo1 = turf.geometry(geometry1.type, geometry1.coordinates);
-        const geo2 = turf.geometry(geometry2.type, geometry2.coordinates);
+        const geo1 = turf.feature(geometry1);
+        const geo2 = turf.feature(geometry2);
 
         const results = {};
         results.within = turf.booleanWithin(geo1, geo2);
