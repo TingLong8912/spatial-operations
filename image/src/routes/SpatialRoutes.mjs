@@ -53,4 +53,25 @@ router.post('/select', (req, res) => {
     }
 });
 
+router.post('/within', (req, res) => {
+    try {
+        const { geometry1, geometry2, relations } = req.body;
+
+        if (!geometry1 || !geometry2 || !Array.isArray(relations) || relations.length === 0) {
+            return res.status(400).json({ error: 'Missing or invalid parameters' });
+        }
+
+        const geo1 = turf.geometry(geometry1.type, geometry1.coordinates);
+        const geo2 = turf.geometry(geometry2.type, geometry2.coordinates);
+
+        const results = {};
+        results.within = turf.booleanWithin(geo1, geo2);
+   
+        res.json({ relations: results });
+    } catch (err) {
+        console.error('Spatial relation error:', err);
+        res.status(500).json({ error: 'Failed to process spatial relations' });
+    }
+});
+
 export default router;
