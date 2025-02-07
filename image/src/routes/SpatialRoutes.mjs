@@ -3,86 +3,76 @@ import * as turf from '@turf/turf';
 
 const router = Router();
 
-router.post('/select', (req, res) => {
-    try {
-        const { geometry1, geometry2, relations } = req.body;
+const spatialRelations = {
+    equals: turf.booleanEqual,
+    disjoint: turf.booleanDisjoint,
+    touches: turf.booleanTouch,
+    contains: turf.booleanContains,
+    covers: turf.booleanCover,
+    intersects: turf.booleanIntersects,
+    within: relationFunction,
+    crosses: turf.booleanCrosses,
+    overlaps: turf.booleanOverlap
+};
 
-        if (!geometry1 || !geometry2 || !Array.isArray(relations) || relations.length === 0) {
+// Helper function to process spatial relations
+const processSpatialRelation = (req, res, relationFunction, relationName) => {
+    try {
+        // Extract target geometry and reference geometry from request body
+        const { targetGeom, referGeom } = req.body;
+
+        // Validate input parameters
+        if (!targetGeom || !referGeom) {
             return res.status(400).json({ error: 'Missing or invalid parameters' });
         }
 
-        const geo1 = turf.geometry(geometry1.type, geometry1.coordinates);
-        const geo2 = turf.geometry(geometry2.type, geometry2.coordinates);
-
-        const results = {};
-
-        relations.forEach(relation => {
-            switch (relation) {
-                case 'equals':
-                    results.equals = turf.booleanEqual(geo1, geo2);
-                    break; 
-                case 'within':
-                    results.within = turf.booleanWithin(geo1, geo2);
-                    break;
-                case 'intersects':
-                    results.intersects = turf.booleanIntersects(geo1, geo2);
-                    break;
-                case 'contains':
-                    results.contains = turf.booleanContains(geo1, geo2);
-                    break;
-                case 'disjoint':
-                    results.disjoint = turf.booleanDisjoint(geo1, geo2);
-                    break;
-                case 'overlaps':
-                    results.overlaps = turf.booleanOverlap(geo1, geo2);
-                    break;
-                case 'touches':
-                    results.touches = turf.booleanTouch(geo1, geo2);
-                    break;
-                // case 'covers'
-                // case 'crosses'
-                default:
-                    results[relation] = 'Invalid relation';
-            }
-        });
-
-        res.json({ relations: results });
-    } catch (err) {
-        console.error('Spatial relation error:', err);
-        res.status(500).json({ error: 'Failed to process spatial relations' });
-    }
-});
-
-router.post('/within', (req, res) => {
-    try {
-        const { targetPt, referObj } = req.body;
-
-        if (!targetPt || !referObj ) {
-            return res.status(400).json({ error: 'Missing or invalid parameters' });
-        }
-
-        const results = {};
+        // Compute the spatial relation
+        const result = {};
         let tempObjects = [];
-        
+
+        // Check if reference object is a FeatureCollection
         if (referObj.type === 'FeatureCollection') {
+            // Iterate through features and check if target point is within them
             referObj.features.forEach(feature => {
-                if (turf.booleanWithin(targetPt, feature)) {
+                if (relationFunction(targetPt, feature)) {
                     tempObjects.push(feature);
                 }
             });
         } else {
-            turf.booleanWithin(targetPt, referObj)
-            tempObjects.push(referObj);
+            // Check if target point is within a single reference object
+            if (relationFunction(targetPt, referObj)) {
+                tempObjects.push(referObj);
+            }
         }
+        result[relationName] = tempObjects;
 
-        results.within = turf.featureCollection(tempObjects);
-
-        res.json({ relations: results });
+        // Return result as JSON response
+        res.json({ relation: relationName, result });
     } catch (err) {
-        console.error('Spatial relation error:', err);
-        res.status(500).json({ error: 'Failed to process spatial relations' });
+        // Handle errors and return the error message to the frontend
+        console.error(`${relationName} relation error:`, err);
+        res.status(500).json({ error: `Failed to process ${relationName} relation`, details: err.message });
     }
-});
+};
+
+// Define spatial relation endpoints
+router.post('/equals', (req, res) => processSpatialRelation(req, res, spatialRelations.equals, 'Equals'));
+
+router.post('/disjoint', (req, res) => processSpatialRelation(req, res, spatialRelations.disjoint, 'Disjoint'));
+
+router.post('/touches', (req, res) => processSpatialRelation(req, res, spatialRelations.touches, 'Touches'));
+
+router.post('/contains', (req, res) => processSpatialRelation(req, res, spatialRelations.contains, 'Contains'));
+
+router.post('/covers', (req, res) => processSpatialRelation(req, res, spatialRelations.covers, 'Covers'));
+
+router.post('/intersects', (req, res) => processSpatialRelation(req, res, spatialRelations.intersects, 'Intersects'));
+
+router.post('/within', (req, res) => processSpatialRelation(req, res, spatialRelations.within, 'Within'));
+
+router.post('/crosses', (req, res) => processSpatialRelation(req, res, spatialRelations.crosses, 'Crosses'));
+
+router.post('/overlaps', (req, res) => processSpatialRelation(req, res, spatialRelations.overlaps, 'Overlaps'));
 
 router.get('/test', (req, res) => {
     try {
@@ -169,22 +159,31 @@ router.get('/test', (req, res) => {
               }
             ]
         };
-
+   
+        
         const results = {};
-
         let tempObjects = [];
-        referObj.features.forEach(feature => {
-            if (turf.booleanWithin(targetPt, feature)) {
-                tempObjects.push(feature);
-            }
-        });
 
+        if (referObj.type === 'FeatureCollection') {
+            referObj.features.forEach(feature => {
+                if (relationFunction(targetPt, feature)) {
+                    tempObjects.push(feature);
+                }
+            });
+        } else {
+            relationFunction(targetPt, referObj)
+            tempObjects.push(referObj);
+        }
+        
         results.within = turf.featureCollection(tempObjects);
 
-        res.json({ relations: results });
+        res.json({ data: results });
     } catch (err) {
         console.error('Spatial relation error:', err);
-        res.status(500).json({ error: 'Failed to process spatial relations' });
+        res.status(500).json({ 
+            error: 'Failed to process spatial relations',
+            message: err
+        });
     };
 });
 
