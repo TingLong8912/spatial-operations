@@ -31,17 +31,17 @@ const processSpatialRelation = (req, res, relationFunction, relationName) => {
         let tempObjects = [];
 
         // Check if reference object is a FeatureCollection
-        if (referObj.type === 'FeatureCollection') {
+        if (referGeom.type === 'FeatureCollection') {
             // Iterate through features and check if target point is within them
-            referObj.features.forEach(feature => {
-                if (relationFunction(targetPt, feature)) {
+            referGeom.features.forEach(feature => {
+                if (relationFunction(targetGeom, feature)) {
                     tempObjects.push(feature);
                 }
             });
         } else {
             // Check if target point is within a single reference object
-            if (relationFunction(targetPt, referObj)) {
-                tempObjects.push(referObj);
+            if (relationFunction(targetGeom, referGeom)) {
+                tempObjects.push(referGeom);
             }
         }
         result[relationName] = tempObjects;
@@ -76,7 +76,7 @@ router.post('/overlaps', (req, res) => processSpatialRelation(req, res, spatialR
 
 router.get('/test', (req, res) => {
     try {
-        const targetPt = {
+        const targetGeom = {
             "type": "Feature",
             "properties": {},
             "geometry": {
@@ -88,7 +88,7 @@ router.get('/test', (req, res) => {
             }
         };
     
-        const referObj = {
+        const referGeom = {
             "type": "FeatureCollection",
             "features": [
               {
@@ -164,15 +164,15 @@ router.get('/test', (req, res) => {
         const results = {};
         let tempObjects = [];
 
-        if (referObj.type === 'FeatureCollection') {
-            referObj.features.forEach(feature => {
-                if (relationFunction(targetPt, feature)) {
+        if (referGeom.type === 'FeatureCollection') {
+            referGeom.features.forEach(feature => {
+                if (relationFunction(targetGeom, feature)) {
                     tempObjects.push(feature);
                 }
             });
         } else {
-            relationFunction(targetPt, referObj)
-            tempObjects.push(referObj);
+            relationFunction(targetGeom, referGeom)
+            tempObjects.push(referGeom);
         }
         
         results.within = turf.featureCollection(tempObjects);
