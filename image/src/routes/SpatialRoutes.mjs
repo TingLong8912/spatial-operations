@@ -55,9 +55,9 @@ router.post('/select', (req, res) => {
 
 router.post('/within', (req, res) => {
     try {
-        const { targetPtPt, referObj } = req.body;
+        const { targetPt, referObj } = req.body;
 
-        if (!targetPtPt || !referObj ) {
+        if (!targetPt || !referObj ) {
             return res.status(400).json({ error: 'Missing or invalid parameters' });
         }
 
