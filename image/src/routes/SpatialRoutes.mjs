@@ -10,7 +10,7 @@ const spatialRelations = {
     contains: turf.booleanContains,
     covers: turf.booleanCover,
     intersects: turf.booleanIntersects,
-    within: relationFunction,
+    within: turf.booleanWithin,
     crosses: turf.booleanCrosses,
     overlaps: turf.booleanOverlap
 };
