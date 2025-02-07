@@ -166,12 +166,12 @@ router.get('/test', (req, res) => {
 
         if (referGeom.type === 'FeatureCollection') {
             referGeom.features.forEach(feature => {
-                if (relationFunction(targetGeom, feature)) {
+                if (turf.booleanWithin(targetGeom, feature)) {
                     tempObjects.push(feature);
                 }
             });
         } else {
-            relationFunction(targetGeom, referGeom)
+            turf.booleanWithin(targetGeom, referGeom)
             tempObjects.push(referGeom);
         }
         
