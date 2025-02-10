@@ -4,7 +4,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv-defaults';
 import path from 'path';
-import { router } from './routes/index.mjs';
+import { router } from './routes/index.js';
 
 /* CONFIGURATIONS */
 dotenv.config();
