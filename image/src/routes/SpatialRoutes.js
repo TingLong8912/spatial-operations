@@ -565,26 +565,9 @@ router.get('/grandpa', async (rep, res) => {
   const a = [[2, 2], [3, 1], [3, 3], [5, 2], [4, 0]];
   const b = [[0, 1], [1, 0], [0, -2], [1, 0], [2, -2]];
   
-  function calculateIntersection(line1, line2) {
-    const [[x1, y1], [x2, y2]] = line1;
-    const [[x3, y3], [x4, y4]] = line2;
-
-    const m1 = (y2 - y1) / (x2 - x1);
-    const m2 = (y4 - y3) / (x4 - x3);
-
-    const b1 = y1 - m1 * x1;
-    const b2 = y3 - m2 * x3;
-
-    if (m1 === m2) return null;
-
-    const x = (b2 - b1) / (m1 - m2);
-    const y = m1 * x + b1;
-
-    return { x, y };
-  }
-
   async function calculateOuterTangentsAndIntersections(polygonA, polygonB) { 
-    const url = 'http://localhost:4000/math/tangent';
+    // const url = 'http://localhost:4000/math/tangent'; // local
+    const url = 'https://getroadmile.sgis.tw/math/tangent';
     
     try {
       const response = await fetch(url, {
