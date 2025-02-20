@@ -594,7 +594,7 @@ router.get('/grandpa', async (rep, res) => {
   res.json({ result });
 });
 
-router.get('/azimuth', (req, res) => {
+router.post('/azimuth', (req, res) => {
   try {
       // Extract target geometry and reference geometry from request body
       const { targetGeom, referGeom } = req.body;
