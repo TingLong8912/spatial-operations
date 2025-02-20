@@ -594,4 +594,29 @@ router.get('/grandpa', async (rep, res) => {
   res.json({ result });
 });
 
+router.get('/azimuth', (req, res) => {
+  try {
+      // Extract target geometry and reference geometry from request body
+      const { targetGeom, referGeom } = req.body;
+
+      // Validate input parameters
+      if (!targetGeom || !referGeom) {
+          return res.status(400).json({ error: 'Missing or invalid parameters' });
+      }
+
+      // Compute the spatial relation
+      const referCentroid = turf.centroid(referGeom);
+      const targetCentroid = turf.centroid(targetGeom);
+
+      const bearing = turf.bearing(referCentroid, targetCentroid);
+
+      // Return result as JSON response
+      res.json({ relation: 'azimuth', bearing });
+  } catch (err) {
+      // Handle errors and return the error message to the frontend
+      console.error(`Azimuth relation error:`, err);
+      res.status(500).json({ error: `Failed to process azimuth relation`, details: err.message });
+  }
+});
+
 export default router;
