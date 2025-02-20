@@ -608,7 +608,7 @@ router.post('/azimuth', (req, res) => {
       const referCentroid = turf.centroid(referGeom);
       const targetCentroid = turf.centroid(targetGeom);
 
-      const bearing = turf.bearing(referCentroid, targetCentroid);
+      const bearing = turf.bearing(targetCentroid, referCentroid);
 
       // Return result as JSON response
       res.json({ relation: 'azimuth', bearing });
