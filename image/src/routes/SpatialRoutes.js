@@ -36,7 +36,7 @@ const processSpatialRelation = (req, res, relationFunction, relationName) => {
         }
 
         // Compute the spatial relation
-        const result = {};
+        let result = [];
         let tempObjects = [];
 
         // Check if reference object is a FeatureCollection
@@ -53,7 +53,7 @@ const processSpatialRelation = (req, res, relationFunction, relationName) => {
                 tempObjects.push(referGeom);
             }
         }
-        result = tempObjects;
+        result.push(tempObjects);
 
         // Return result as JSON response
         res.json({ relation: relationName, result });
