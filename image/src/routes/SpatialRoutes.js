@@ -52,7 +52,7 @@ const processSpatialRelation = (req, res, relationFunction, relationName) => {
                 result.push(referGeom);
             }
         }
-        
+
         // Return result as JSON response
         res.json({ relation: relationName, result });
     } catch (err) {
@@ -347,7 +347,7 @@ router.post('/azimuth', (req, res) => {
     const targetCentroid = turf.centroid(targetGeom);
 
     const bearing = turf.bearing(targetCentroid, referCentroid);
-    referGeom.properties['bearing'] = bearing;
+    // referGeom.properties['bearing'] = bearing;
 
     // Return result as JSON response
     res.json({ relation: 'Azimuth', result: referGeom });
