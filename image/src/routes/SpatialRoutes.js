@@ -54,7 +54,7 @@ const processSpatialRelation = (req, res, relationFunction, relationName) => {
         }
 
         // Return result as JSON response
-        res.json({ relation: relationName, result });
+        res.json({ relation: relationName, geojson: result });
     } catch (err) {
         // Handle errors and return the error message to the frontend
         console.error(`${relationName} relation error:`, err);
@@ -347,10 +347,9 @@ router.post('/azimuth', (req, res) => {
     const targetCentroid = turf.centroid(targetGeom);
 
     const bearing = turf.bearing(targetCentroid, referCentroid);
-    // referGeom.properties['bearing'] = bearing;
 
     // Return result as JSON response
-    res.json({ relation: 'Azimuth', result: referGeom });
+    res.json({ relation: 'Azimuth', result: bearing, geojson: referGeom });
   } catch (err) {
     // Handle errors and return the error message to the frontend
     console.error(`Azimuth relation error:`, err);
@@ -452,7 +451,6 @@ router.get('/test', (req, res) => {
             ]
         };
    
-        
         const results = {};
         let tempObjects = [];
 
