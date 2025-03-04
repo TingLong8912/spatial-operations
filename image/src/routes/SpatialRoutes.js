@@ -37,24 +37,22 @@ const processSpatialRelation = (req, res, relationFunction, relationName) => {
 
         // Compute the spatial relation
         let result = [];
-        let tempObjects = [];
 
         // Check if reference object is a FeatureCollection
         if (referGeom.type === 'FeatureCollection') {
             // Iterate through features and check if target point is within them
             referGeom.features.forEach(feature => {
                 if (relationFunction(targetGeom, feature)) {
-                    tempObjects.push(feature);
+                    result.push(feature);
                 }
             });
         } else {
             // Check if target point is within a single reference object
             if (relationFunction(targetGeom, referGeom)) {
-                tempObjects.push(referGeom);
+                result.push(referGeom);
             }
         }
-        result.push(tempObjects);
-
+        
         // Return result as JSON response
         res.json({ relation: relationName, result });
     } catch (err) {
