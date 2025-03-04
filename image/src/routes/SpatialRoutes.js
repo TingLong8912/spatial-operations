@@ -53,7 +53,7 @@ const processSpatialRelation = (req, res, relationFunction, relationName) => {
                 tempObjects.push(referGeom);
             }
         }
-        result[relationName] = tempObjects;
+        result = tempObjects;
 
         // Return result as JSON response
         res.json({ relation: relationName, result });
@@ -334,6 +334,31 @@ router.post('/crosses', (req, res) => processSpatialRelation(req, res, spatialRe
 
 router.post('/overlaps', (req, res) => processSpatialRelation(req, res, spatialRelations.overlaps, 'Overlaps'));
 
+router.post('/azimuth', (req, res) => {
+  try {
+    // Extract target geometry and reference geometry from request body
+    const { targetGeom, referGeom } = req.body;
+
+    // Validate input parameters
+    if (!targetGeom || !referGeom) {
+        return res.status(400).json({ error: 'Missing or invalid parameters' });
+    }
+
+    // Compute the spatial relation
+    const referCentroid = turf.centroid(referGeom);
+    const targetCentroid = turf.centroid(targetGeom);
+
+    const bearing = turf.bearing(targetCentroid, referCentroid);
+
+    // Return result as JSON response
+    res.json({ relation: 'azimuth', bearing });
+  } catch (err) {
+    // Handle errors and return the error message to the frontend
+    console.error(`Azimuth relation error:`, err);
+    res.status(500).json({ error: `Failed to process azimuth relation`, details: err.message });
+  }
+});
+
 ///////////////////////////////////////////////////
 //
 //
@@ -592,31 +617,6 @@ router.get('/grandpa', async (rep, res) => {
   const { result } = await calculateOuterTangentsAndIntersections(a, b);
 
   res.json({ result });
-});
-
-router.post('/azimuth', (req, res) => {
-  try {
-      // Extract target geometry and reference geometry from request body
-      const { targetGeom, referGeom } = req.body;
-
-      // Validate input parameters
-      if (!targetGeom || !referGeom) {
-          return res.status(400).json({ error: 'Missing or invalid parameters' });
-      }
-
-      // Compute the spatial relation
-      const referCentroid = turf.centroid(referGeom);
-      const targetCentroid = turf.centroid(targetGeom);
-
-      const bearing = turf.bearing(targetCentroid, referCentroid);
-
-      // Return result as JSON response
-      res.json({ relation: 'azimuth', bearing });
-  } catch (err) {
-      // Handle errors and return the error message to the frontend
-      console.error(`Azimuth relation error:`, err);
-      res.status(500).json({ error: `Failed to process azimuth relation`, details: err.message });
-  }
 });
 
 export default router;
