@@ -11,19 +11,6 @@ const router = Router();
 //
 ///////////////////////////////////////////////////
 
-// All topogical relations
-const spatialRelations = {
-  equals: turf.booleanEqual,
-  disjoint: turf.booleanDisjoint,
-  touches: turf.booleanTouches,
-  contains: turf.booleanContains,
-  // covers: turf.booleanCover,
-  intersects: turf.booleanIntersects,
-  within: isWithin,
-  crosses: turf.booleanCrosses,
-  overlaps: turf.booleanOverlap
-};
-
 const isWithin = (targetGeom, referGeom) => {
   // 若 target 是 FeatureCollection，檢查是否有任一個 feature 符合
   if (targetGeom.type === "FeatureCollection") {
@@ -59,6 +46,19 @@ const isWithin = (targetGeom, referGeom) => {
   // 其他類型不支援，回傳 false
   return false;
 }
+
+// All topogical relations
+const spatialRelations = {
+  equals: turf.booleanEqual,
+  disjoint: turf.booleanDisjoint,
+  touches: turf.booleanTouches,
+  contains: turf.booleanContains,
+  // covers: turf.booleanCover,
+  intersects: turf.booleanIntersects,
+  within: isWithin,
+  crosses: turf.booleanCrosses,
+  overlaps: turf.booleanOverlap
+};
 
 // Function to process spatial topogical relations
 const processSpatialRelation = (req, res, relationFunction, relationName) => {
