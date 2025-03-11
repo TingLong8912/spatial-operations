@@ -27,33 +27,16 @@ const spatialRelations = {
 // Function to process spatial topogical relations
 const processSpatialRelation = (req, res, relationFunction, relationName) => {
     try {
-        // Extract target geometry and reference geometry from request body
         const { targetGeom, referGeom } = req.body;
-
-        // Validate input parameters
         if (!targetGeom || !referGeom) {
             return res.status(400).json({ error: 'Missing or invalid parameters' });
         }
 
-        // Compute the spatial relation
         let result = [];
-
-        // Check if reference object is a FeatureCollection
-        if (referGeom.type === 'FeatureCollection') {
-            // Iterate through features and check if target point is within them
-            referGeom.features.forEach(feature => {
-                if (relationFunction(targetGeom, feature)) {
-                    result.push(feature);
-                }
-            });
-        } else {
-            // Check if target point is within a single reference object
-            if (relationFunction(targetGeom, referGeom)) {
-                result.push(referGeom);
-            }
+        if (relationFunction(targetGeom, referGeom)) {
+          result.push(referGeom);
         }
 
-        // Return result as JSON response
         res.json({ relation: relationName, geojson: result });
     } catch (err) {
         // Handle errors and return the error message to the frontend
