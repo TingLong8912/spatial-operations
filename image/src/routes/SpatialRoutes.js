@@ -19,10 +19,40 @@ const spatialRelations = {
   contains: turf.booleanContains,
   // covers: turf.booleanCover,
   intersects: turf.booleanIntersects,
-  within: turf.booleanWithin,
+  within: isWithin,
   crosses: turf.booleanCrosses,
   overlaps: turf.booleanOverlap
 };
+
+const isWithin = (targetGeom, referGeom) => {
+  if (targetGeom.type === "FeatureCollection") {
+    return targetGeom.features.some((feature) => isWithin(feature, referGeom)) ? referGeom : null;
+  }
+
+  if (referGeom.type === "FeatureCollection") {
+    return referGeom.features.find((feature) => isWithin(targetGeom, feature)) || null;
+  }
+
+  const targetType = targetGeom.geometry.type;
+  const referType = referGeom.geometry.type;
+
+  if (targetType === "Point" && (referType === "Polygon" || referType === "MultiPolygon")) {
+    return booleanPointInPolygon(targetGeom, referGeom) ? referGeom : null;
+  }
+
+  if (
+    (targetType === "LineString" || targetType === "Polygon") &&
+    (referType === "Polygon" || referType === "MultiPolygon")
+  ) {
+    return booleanWithin(targetGeom, referGeom) ? referGeom : null;
+  }
+
+  if (targetType === "MultiPoint" && (referType === "Polygon" || referType === "MultiPolygon")) {
+    return pointsWithinPolygon(targetGeom, referGeom).features.length > 0 ? referGeom : null;
+  }
+
+  return null;
+}
 
 // Function to process spatial topogical relations
 const processSpatialRelation = (req, res, relationFunction, relationName) => {
