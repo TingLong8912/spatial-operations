@@ -68,12 +68,11 @@ const processSpatialRelation = (req, res, relationFunction, relationName) => {
             return res.status(400).json({ error: 'Missing or invalid parameters' });
         }
 
-        let result = [];
         if (relationFunction(targetGeom, referGeom)) {
-          result.push(referGeom);
+          res.json({ relation: relationName, geojson: referGeom });
+        } else {
+          res.status(404).json({ error: `No ${relationName} relation found`, geojson: null });
         }
-
-        res.json({ relation: relationName, geojson: result });
     } catch (err) {
         // Handle errors and return the error message to the frontend
         console.error(`${relationName} relation error:`, err);
