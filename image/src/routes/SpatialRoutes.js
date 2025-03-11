@@ -25,33 +25,39 @@ const spatialRelations = {
 };
 
 const isWithin = (targetGeom, referGeom) => {
+  // 若 target 是 FeatureCollection，檢查是否有任一個 feature 符合
   if (targetGeom.type === "FeatureCollection") {
-    return targetGeom.features.some((feature) => isWithin(feature, referGeom)) ? referGeom : null;
+    return targetGeom.features.some((feature) => isWithin(feature, referGeom));
   }
 
+  // 若 refer 是 FeatureCollection，檢查是否有任一個 feature 包含 target
   if (referGeom.type === "FeatureCollection") {
-    return referGeom.features.find((feature) => isWithin(targetGeom, feature)) || null;
+    return referGeom.features.some((feature) => isWithin(targetGeom, feature));
   }
 
   const targetType = targetGeom.geometry.type;
   const referType = referGeom.geometry.type;
 
+  // Point in Polygon/MultiPolygon
   if (targetType === "Point" && (referType === "Polygon" || referType === "MultiPolygon")) {
-    return booleanPointInPolygon(targetGeom, referGeom) ? referGeom : null;
+    return turf.booleanPointInPolygon(targetGeom, referGeom);
   }
 
+  // LineString/Polygon in Polygon/MultiPolygon
   if (
     (targetType === "LineString" || targetType === "Polygon") &&
     (referType === "Polygon" || referType === "MultiPolygon")
   ) {
-    return booleanWithin(targetGeom, referGeom) ? referGeom : null;
+    return turf.booleanWithin(targetGeom, referGeom);
   }
 
+  // FeatureCollection of points in Polygon/MultiPolygon
   if (targetType === "MultiPoint" && (referType === "Polygon" || referType === "MultiPolygon")) {
-    return pointsWithinPolygon(targetGeom, referGeom).features.length > 0 ? referGeom : null;
+    return turf.pointsWithinPolygon(targetGeom, referGeom).features.length > 0;
   }
 
-  return null;
+  // 其他類型不支援，回傳 false
+  return false;
 }
 
 // Function to process spatial topogical relations
