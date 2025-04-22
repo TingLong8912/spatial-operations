@@ -367,7 +367,7 @@ router.post('/azimuth', (req, res) => {
     const bearing = turf.bearing(targetCentroid, referCentroid);
 
     // Return result as JSON response
-    res.json({ relation: 'Azimuth', other_info: bearing, geojson: referGeom });
+    res.json({ relation: 'AbsoluteDirection', other_info: bearing, geojson: referGeom });
   } catch (err) {
     // Handle errors and return the error message to the frontend
     console.error(`Azimuth relation error:`, err);
