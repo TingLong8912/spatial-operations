@@ -351,14 +351,17 @@ router.post('/crosses', (req, res) => processSpatialRelation(req, res, spatialRe
 router.post('/overlaps', (req, res) => processSpatialRelation(req, res, spatialRelations.overlaps, 'Overlaps'));
 
 // Helper function: map azimuth (bearing) to fuzzy directions (may return multiple directions)
-function mapAzimuthToFuzzyDirection(angle, margin = 45) {
+function mapAzimuthToFuzzyDirection(angle) {
   const directions = [
     { label: "north", center: 0 },
     { label: "east", center: 90 },
     { label: "south", center: 180 },
     { label: "west", center: 270 }
   ];
+
+  const margin = 67.5;
   angle = (angle + 360) % 360;
+
   return directions
     .filter(d => {
       const diff = Math.abs(((angle - d.center + 180 + 360) % 360) - 180);
