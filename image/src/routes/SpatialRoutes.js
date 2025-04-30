@@ -350,6 +350,23 @@ router.post('/crosses', (req, res) => processSpatialRelation(req, res, spatialRe
 
 router.post('/overlaps', (req, res) => processSpatialRelation(req, res, spatialRelations.overlaps, 'Overlaps'));
 
+// Helper function: map azimuth (bearing) to fuzzy direction
+function mapAzimuthToFuzzyDirection(bearing) {
+  // Map bearing to fuzzy directions (N, E, S, W)
+  // N: 315~45, E: 45~135, S: 135~225, W: 225~315
+  if ((bearing >= 315 && bearing <= 360) || (bearing >= 0 && bearing < 45)) {
+    return "N";
+  } else if (bearing >= 45 && bearing < 135) {
+    return "E";
+  } else if (bearing >= 135 && bearing < 225) {
+    return "S";
+  } else if (bearing >= 225 && bearing < 315) {
+    return "W";
+  } else {
+    return "Unknown";
+  }
+}
+
 router.post('/azimuth', (req, res) => {
   try {
     // Extract target geometry and reference geometry from request body
@@ -365,9 +382,10 @@ router.post('/azimuth', (req, res) => {
     const targetCentroid = turf.centroid(targetGeom);
 
     const bearing = turf.bearing(targetCentroid, referCentroid);
+    const fuzzyDirections = mapAzimuthToFuzzyDirection((bearing + 360) % 360);
 
     // Return result as JSON response
-    res.json({ relation: 'AbsoluteDirection', other_info: bearing, geojson: referGeom });
+    res.json({ relation: 'AbsoluteDirection', other_info: fuzzyDirections, geojson: referGeom });
   } catch (err) {
     // Handle errors and return the error message to the frontend
     console.error(`Azimuth relation error:`, err);
