@@ -385,7 +385,7 @@ router.post('/azimuth', (req, res) => {
     const fuzzyDirections = mapAzimuthToFuzzyDirection((bearing + 360) % 360);
 
     // Return result as JSON response
-    res.json({ relation: 'AbsoluteDirection', other_info: fuzzyDirections, geojson: referGeom });
+    res.json({ relation: 'AbsoluteDirection', other_info: fuzzyDirections, geojson: referGeom, bearing: bearing });
   } catch (err) {
     // Handle errors and return the error message to the frontend
     console.error(`Azimuth relation error:`, err);
