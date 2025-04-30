@@ -355,15 +355,15 @@ function mapAzimuthToFuzzyDirection(bearing) {
   // Map bearing to fuzzy directions (N, E, S, W)
   // N: 315~45, E: 45~135, S: 135~225, W: 225~315
   if ((bearing >= 315 && bearing <= 360) || (bearing >= 0 && bearing < 45)) {
-    return "N";
+    return "north";
   } else if (bearing >= 45 && bearing < 135) {
-    return "E";
+    return "east";
   } else if (bearing >= 135 && bearing < 225) {
-    return "S";
+    return "south";
   } else if (bearing >= 225 && bearing < 315) {
-    return "W";
+    return "west";
   } else {
-    return "Unknown";
+    return null;
   }
 }
 
