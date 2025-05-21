@@ -358,7 +358,7 @@ function mapAzimuthToFuzzyDirection(angle, margin = 45) {
     { label: "south", center: 180 },
     { label: "west", center: 270 }
   ];
-  angle = (angle + 360) % 360;
+
   return directions
     .filter(d => {
       const diff = Math.abs(((angle - d.center + 180 + 360) % 360) - 180);
@@ -381,7 +381,8 @@ router.post('/azimuth', (req, res) => {
     const referCentroid = turf.centroid(referGeom);
     const targetCentroid = turf.centroid(targetGeom);
 
-    const bearing = turf.bearing(targetCentroid, referCentroid);
+    const bearing = turf.bearing(referCentroid, targetCentroid);
+    bearing = (bearing + 360) % 360;
     const fuzzyDirections = mapAzimuthToFuzzyDirection(bearing);
 
     // Return result as JSON response
