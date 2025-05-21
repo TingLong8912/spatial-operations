@@ -350,25 +350,21 @@ router.post('/crosses', (req, res) => processSpatialRelation(req, res, spatialRe
 
 router.post('/overlaps', (req, res) => processSpatialRelation(req, res, spatialRelations.overlaps, 'Overlaps'));
 
-// Helper function: map azimuth (bearing) to fuzzy directions (eight cardinal directions)
-function mapAzimuthToFuzzyDirection(angle) {
-  // 將 angle 正規化到 [0, 360)
-  angle = (angle + 360) % 360;
-
+// Helper function: map azimuth (bearing) to fuzzy directions (may return multiple directions)
+function mapAzimuthToFuzzyDirection(angle, margin = 45) {
   const directions = [
-    { label: "N", from: 337.5, to: 360 },
-    { label: "N", from: 0, to: 22.5 },
-    { label: "NE", from: 22.5, to: 67.5 },
-    { label: "E", from: 67.5, to: 112.5 },
-    { label: "SE", from: 112.5, to: 157.5 },
-    { label: "S", from: 157.5, to: 202.5 },
-    { label: "SW", from: 202.5, to: 247.5 },
-    { label: "W", from: 247.5, to: 292.5 },
-    { label: "NW", from: 292.5, to: 337.5 }
+    { label: "north", center: 0 },
+    { label: "east", center: 90 },
+    { label: "south", center: 180 },
+    { label: "west", center: 270 }
   ];
-
-  const matched = directions.find(d => angle >= d.from && angle < d.to);
-  return [matched?.label || "N"]; // 預設回傳北
+  angle = (angle + 360) % 360;
+  return directions
+    .filter(d => {
+      const diff = Math.abs(((angle - d.center + 180 + 360) % 360) - 180);
+      return diff <= margin;
+    })
+    .map(d => d.label);
 }
 
 router.post('/azimuth', (req, res) => {
