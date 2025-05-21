@@ -367,6 +367,24 @@ function mapAzimuthToFuzzyDirection(angle, margin = 45) {
     .map(d => d.label);
 }
 
+router.get('/test_a', (_, res) => {
+  const refer = turf.point([121.73901628768876, 25.132052184422744]); // 基隆市
+  const target = turf.point([121.53855372125861, 25.041736938719456]);  // 台北市
+
+  // 計算方位角（turf.js 回傳範圍為 -180 ~ 180）
+  let bearing = turf.bearing(refer, target);
+  console.log(bearing);
+  // 正規化到 0 ~ 360
+  bearing = (bearing + 360) % 360;
+
+  const fuzzyDirections = mapAzimuthToFuzzyDirection(bearing);
+  // 輸出結果
+  console.log(`方位角（bearing）: ${bearing.toFixed(2)}°`);
+  console.log(`對應方位: ${fuzzyDirections}`);
+
+  res.json({ "bearing": bearing, "direction": fuzzyDirections });
+}); 
+
 router.post('/azimuth', (req, res) => {
   try {
     // Extract target geometry and reference geometry from request body
@@ -381,7 +399,7 @@ router.post('/azimuth', (req, res) => {
     const referCentroid = turf.centroid(referGeom);
     const targetCentroid = turf.centroid(targetGeom);
 
-    const bearing = turf.bearing(referCentroid, targetCentroid);
+    let bearing = turf.bearing(referCentroid, targetCentroid);
     bearing = (bearing + 360) % 360;
     const fuzzyDirections = mapAzimuthToFuzzyDirection(bearing);
 
