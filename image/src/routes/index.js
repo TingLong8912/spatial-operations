@@ -10,6 +10,6 @@ const router = Router();
 /* ROUTES */
 router.use('/api', ApiRoutes);
 router.use('/spatial-operation', SpatialRoutes);
-router.use('/math', MathRoutes); 
+// router.use('/math', MathRoutes); 
 
 export { router };
