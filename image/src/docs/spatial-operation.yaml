@@ -1,0 +1,574 @@
+openapi: 3.0.0
+info:
+  title: Spatial Opeations API
+  version: 1.0.0
+paths:
+  /spatial-operation/intersects:
+    post:
+      summary: 判斷 target 是否與 reference 幾何相交（面對面）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                targetGeom:
+                  type: object
+                  description: 目標幾何（Polygon，GeoJSON 格式）
+                  default:
+                    type: Feature
+                    geometry:
+                      type: Polygon
+                      coordinates:
+                        - 
+                          - [0, 0]
+                          - [3, 0]
+                          - [3, 3]
+                          - [0, 3]
+                          - [0, 0]
+                referGeom:
+                  type: object
+                  description: 參考幾何（Polygon，GeoJSON 格式）
+                  default:
+                    type: Feature
+                    geometry:
+                      type: Polygon
+                      coordinates:
+                        - 
+                          - [2, 2]
+                          - [5, 2]
+                          - [5, 5]
+                          - [2, 5]
+                          - [2, 2]
+      responses:
+        200:
+          description: 成功回傳 spatial relation 結果
+          content:
+            application/json:
+              example:
+                relation: Intersects
+                geojson:
+                  type: Feature
+                  geometry:
+                    type: Polygon
+                    coordinates:
+                      - 
+                        - [2, 2]
+                        - [5, 2]
+                        - [5, 5]
+                        - [2, 5]
+                        - [2, 2]
+        400:
+          description: 請求參數缺失或格式錯誤
+        404:
+          description: 沒有符合的空間關係
+        500:
+          description: 幾何處理錯誤，通常是輸入幾何格式錯誤或計算失敗
+  /spatial-operation/equals:
+    post:
+      summary: 判斷 target 是否與 reference 幾何完全相等（空間上完全重合）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                targetGeom:
+                  type: object
+                  description: 目標幾何（Point，GeoJSON 格式）
+                  default:
+                    type: Feature
+                    geometry:
+                      type: Point
+                      coordinates: [1, 1]
+                referGeom:
+                  type: object
+                  description: 參考幾何（Point，GeoJSON 格式）
+                  default:
+                    type: Feature
+                    geometry:
+                      type: Point
+                      coordinates: [1, 1]
+      responses:
+        200:
+          description: 成功回傳 spatial relation 結果
+          content:
+            application/json:
+              example:
+                relation: Equals
+                geojson:
+                  type: Feature
+                  geometry:
+                    type: Point
+                    coordinates: [1, 1]
+        400:
+          description: 請求參數缺失或格式錯誤
+        404:
+          description: 沒有符合的空間關係
+        500:
+          description: 幾何處理錯誤，通常是輸入幾何格式錯誤或計算失敗
+  /spatial-operation/within:
+    post:
+      summary: 判斷 target 是否完全位於 reference 幾何內部
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                targetGeom:
+                  type: object
+                  description: 目標幾何（Polygon，GeoJSON 格式）
+                  default:
+                    type: Feature
+                    geometry:
+                      type: Polygon
+                      coordinates:
+                        - 
+                          - [1, 1]
+                          - [2, 1]
+                          - [2, 2]
+                          - [1, 2]
+                          - [1, 1]
+                referGeom:
+                  type: object
+                  description: 參考幾何（Polygon，GeoJSON 格式）
+                  default:
+                    type: Feature
+                    geometry:
+                      type: Polygon
+                      coordinates:
+                        - 
+                          - [0, 0]
+                          - [4, 0]
+                          - [4, 4]
+                          - [0, 4]
+                          - [0, 0]
+      responses:
+        200:
+          description: 成功回傳 spatial relation 結果
+          content:
+            application/json:
+              example:
+                relation: Within
+                geojson:
+                  type: Feature
+                  geometry:
+                    type: Polygon
+                    coordinates:
+                      - 
+                        - [1, 1]
+                        - [2, 1]
+                        - [2, 2]
+                        - [1, 2]
+                        - [1, 1]
+        400:
+          description: 請求參數缺失或格式錯誤
+        404:
+          description: 沒有符合的空間關係
+        500:
+          description: 幾何處理錯誤，通常是輸入幾何格式錯誤或計算失敗
+  /spatial-operation/disjoint:
+    post:
+      summary: 判斷 target 是否與 reference 幾何完全不相交
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                targetGeom:
+                  type: object
+                  description: 目標幾何（Polygon，GeoJSON 格式）
+                  default:
+                    type: Feature
+                    geometry:
+                      type: Polygon
+                      coordinates:
+                        - 
+                          - [10, 10]
+                          - [12, 10]
+                          - [12, 12]
+                          - [10, 12]
+                          - [10, 10]
+                referGeom:
+                  type: object
+                  description: 參考幾何（Polygon，GeoJSON 格式）
+                  default:
+                    type: Feature
+                    geometry:
+                      type: Polygon
+                      coordinates:
+                        - 
+                          - [0, 0]
+                          - [3, 0]
+                          - [3, 3]
+                          - [0, 3]
+                          - [0, 0]
+      responses:
+        200:
+          description: 成功回傳 spatial relation 結果
+          content:
+            application/json:
+              example:
+                relation: Disjoint
+                geojson:
+                  type: Feature
+                  geometry:
+                    type: Polygon
+                    coordinates:
+                      - 
+                        - [10, 10]
+                        - [12, 10]
+                        - [12, 12]
+                        - [10, 12]
+                        - [10, 10]
+        400:
+          description: 請求參數缺失或格式錯誤
+        404:
+          description: 沒有符合的空間關係
+        500:
+          description: 幾何處理錯誤，通常是輸入幾何格式錯誤或計算失敗
+  /spatial-operation/touches:
+    post:
+      summary: 判斷 target 是否與 reference 幾何僅在邊界或端點相接
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                targetGeom:
+                  type: object
+                  description: 目標幾何（LineString，GeoJSON 格式）
+                  default:
+                    type: Feature
+                    geometry:
+                      type: LineString
+                      coordinates:
+                        - [0, 0]
+                        - [1, 1]
+                referGeom:
+                  type: object
+                  description: 參考幾何（LineString，GeoJSON 格式）
+                  default:
+                    type: Feature
+                    geometry:
+                      type: LineString
+                      coordinates:
+                        - [1, 1]
+                        - [2, 2]
+      responses:
+        200:
+          description: 成功回傳 spatial relation 結果
+          content:
+            application/json:
+              example:
+                relation: Touches
+                geojson:
+                  type: Feature
+                  geometry:
+                    type: Point
+                    coordinates: [1, 1]
+        400:
+          description: 請求參數缺失或格式錯誤
+        404:
+          description: 沒有符合的空間關係
+        500:
+          description: 幾何處理錯誤，通常是輸入幾何格式錯誤或計算失敗
+  /spatial-operation/contains:
+    post:
+      summary: 判斷 target 是否包含 reference 幾何
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                targetGeom:
+                  type: object
+                  description: 目標幾何（Polygon，GeoJSON 格式）
+                  default:
+                    type: Feature
+                    geometry:
+                      type: Polygon
+                      coordinates:
+                        - 
+                          - [0, 0]
+                          - [4, 0]
+                          - [4, 4]
+                          - [0, 4]
+                          - [0, 0]
+                referGeom:
+                  type: object
+                  description: 參考幾何（Polygon，GeoJSON 格式）
+                  default:
+                    type: Feature
+                    geometry:
+                      type: Polygon
+                      coordinates:
+                        - 
+                          - [1, 1]
+                          - [2, 1]
+                          - [2, 2]
+                          - [1, 2]
+                          - [1, 1]
+      responses:
+        200:
+          description: 成功回傳 spatial relation 結果
+          content:
+            application/json:
+              example:
+                relation: Contains
+                geojson:
+                  type: Feature
+                  geometry:
+                    type: Polygon
+                    coordinates:
+                      - 
+                        - [1, 1]
+                        - [2, 1]
+                        - [2, 2]
+                        - [1, 2]
+                        - [1, 1]
+        400:
+          description: 請求參數缺失或格式錯誤
+        404:
+          description: 沒有符合的空間關係
+        500:
+          description: 幾何處理錯誤，通常是輸入幾何格式錯誤或計算失敗
+  /spatial-operation/covers:
+    post:
+      summary: 判斷 target 是否覆蓋 reference 幾何（允許邊界重合）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                targetGeom:
+                  type: object
+                  description: 目標幾何（Polygon，GeoJSON 格式）
+                  default:
+                    type: Feature
+                    geometry:
+                      type: Polygon
+                      coordinates:
+                        - 
+                          - [0, 0]
+                          - [4, 0]
+                          - [4, 4]
+                          - [0, 4]
+                          - [0, 0]
+                referGeom:
+                  type: object
+                  description: 參考幾何（Polygon，GeoJSON 格式）
+                  default:
+                    type: Feature
+                    geometry:
+                      type: Polygon
+                      coordinates:
+                        - 
+                          - [0, 0]
+                          - [2, 0]
+                          - [2, 2]
+                          - [0, 2]
+                          - [0, 0]
+      responses:
+        200:
+          description: 成功回傳 spatial relation 結果
+          content:
+            application/json:
+              example:
+                relation: Covers
+                geojson:
+                  type: Feature
+                  geometry:
+                    type: Polygon
+                    coordinates:
+                      - 
+                        - [0, 0]
+                        - [2, 0]
+                        - [2, 2]
+                        - [0, 2]
+                        - [0, 0]
+        400:
+          description: 請求參數缺失或格式錯誤
+        404:
+          description: 沒有符合的空間關係
+        500:
+          description: 幾何處理錯誤，通常是輸入幾何格式錯誤或計算失敗
+  /spatial-operation/crosses:
+    post:
+      summary: 判斷 target 是否與 reference 幾何穿越（如線穿越多邊形）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                targetGeom:
+                  type: object
+                  description: 目標幾何（LineString，GeoJSON 格式）
+                  default:
+                    type: Feature
+                    geometry:
+                      type: LineString
+                      coordinates:
+                        - [1, 0]
+                        - [1, 3]
+                referGeom:
+                  type: object
+                  description: 參考幾何（Polygon，GeoJSON 格式）
+                  default:
+                    type: Feature
+                    geometry:
+                      type: Polygon
+                      coordinates:
+                        - 
+                          - [0, 0]
+                          - [3, 0]
+                          - [3, 3]
+                          - [0, 3]
+                          - [0, 0]
+      responses:
+        200:
+          description: 成功回傳 spatial relation 結果
+          content:
+            application/json:
+              example:
+                relation: Crosses
+                geojson:
+                  type: Feature
+                  geometry:
+                    type: LineString
+                    coordinates:
+                      - [1, 0]
+                      - [1, 3]
+        400:
+          description: 請求參數缺失或格式錯誤
+        404:
+          description: 沒有符合的空間關係
+        500:
+          description: 幾何處理錯誤，通常是輸入幾何格式錯誤或計算失敗
+  /spatial-operation/overlaps:
+    post:
+      summary: 判斷 target 是否與 reference 幾何重疊（部分重合但不包含）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                targetGeom:
+                  type: object
+                  description: 目標幾何（Polygon，GeoJSON 格式）
+                  default:
+                    type: Feature
+                    geometry:
+                      type: Polygon
+                      coordinates:
+                        - 
+                          - [1, 1]
+                          - [4, 1]
+                          - [4, 4]
+                          - [1, 4]
+                          - [1, 1]
+                referGeom:
+                  type: object
+                  description: 參考幾何（Polygon，GeoJSON 格式）
+                  default:
+                    type: Feature
+                    geometry:
+                      type: Polygon
+                      coordinates:
+                        - 
+                          - [2, 2]
+                          - [5, 2]
+                          - [5, 5]
+                          - [2, 5]
+                          - [2, 2]
+      responses:
+        200:
+          description: 成功回傳 spatial relation 結果
+          content:
+            application/json:
+              example:
+                relation: Overlaps
+                geojson:
+                  type: Feature
+                  geometry:
+                    type: Polygon
+                    coordinates:
+                      - 
+                        - [2, 2]
+                        - [4, 2]
+                        - [4, 4]
+                        - [2, 4]
+                        - [2, 2]
+        400:
+          description: 請求參數缺失或格式錯誤
+        404:
+          description: 沒有符合的空間關係
+        500:
+          description: 幾何處理錯誤，通常是輸入幾何格式錯誤或計算失敗
+  /spatial-operation/azimuth:
+    post:
+      summary: 計算 target 點到 reference 幾何的方位角（角度，0為正北）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                targetGeom:
+                  type: object
+                  description: 目標幾何（LineString，GeoJSON 格式）
+                  default:
+                    type: Feature
+                    geometry:
+                      type: LineString
+                      coordinates:
+                        - [121.27565070233118, 25.10078801073867]
+                        - [121.08690318509707, 25.026784158378234]
+                        - [120.94041257470604, 24.79427572260782]
+                        - [120.39388991286398, 24.01696871617547]
+                        - [120.19669101426126, 23.614920230022335]
+                        - [120.19387388713847, 23.41601616614477]
+                referGeom:
+                  type: object
+                  description: 參考幾何（Point，GeoJSON 格式）
+                  default:
+                    type: Feature
+                    geometry:
+                      type: Point
+                      coordinates: [121.1966066943503, 23.81423778399588]
+      responses:
+        200:
+          description: 成功回傳方位角結果
+          content:
+            application/json:
+              example:
+                relation: AbsoluteDirection
+                azimuth: 45
+                geojson:
+                  type: Feature
+                  geometry:
+                    type: Point
+                    coordinates: [121.1966066943503, 23.81423778399588]
+        400:
+          description: 請求參數缺失或格式錯誤
+        404:
+          description: 沒有符合的空間關係
+        500:
+          description: 幾何處理錯誤，通常是輸入幾何格式錯誤或計算失敗
